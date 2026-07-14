@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2005/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>" />
+  <title>MQTT Easy Chat - WhatsApp Style</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            chat: {
+              bg: '#0b141a',
+              sidebar: '#111b21',
+              header: '#202c33',
+              incoming: '#202c33',
+              outgoing: '#005c4b',
+              accent: '#00a884',
+              active: '#2a3942',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- MQTT.js CDN -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', sans-serif;
+    }
+    .glass-panel {
+      background: rgba(17, 27, 33, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    @keyframes typingPulse {
+      0%, 100% { transform: translateY(0); opacity: 0.4; }
+      50% { transform: translateY(-4px); opacity: 1; }
+    }
+    .typing-dot {
+      animation: typingPulse 1.4s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    .chat-wallpaper {
+      position: absolute;
+      inset: 0;
+      opacity: 0.06;
+      pointer-events: none;
+      background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+      background-repeat: repeat;
+      background-size: 350px;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slideup {
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen overflow-hidden antialiased selection:bg-[#00a884]/30 selection:text-white">
+
+  <div class="flex h-screen w-screen overflow-hidden bg-chat-bg">
+    
+    <!-- SIDEBAR -->
+    <div class="w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-800 bg-chat-sidebar shrink-0 z-10">
+      <!-- Profile Header -->
+      <div class="h-16 px-4 flex items-center justify-between bg-chat-header border-b border-gray-800">
+        <div class="flex items-center space-x-3">
+          <button onclick="toggleSettingsModal(true)" class="relative group transition hover:scale-105">
+            <img id="my-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full object-cover border-2 border-chat-accent/40">
+            <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-chat-sidebar"></span>
+          </button>
+          <div class="flex flex-col">
+            <span id="my-username" class="font-semibold text-sm leading-tight text-white hover:text-chat-accent cursor-pointer transition" onclick="toggleSettingsModal(true)">Username</span>
+            <span class="text-[11px] text-gray-400">Online via MQTT</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 text-gray-400">
+          <button onclick="toggleSound()" id="sound-btn" class="p-2 hover:bg-chat-active rounded-full hover:text-white transition" title="Matikan Suara">
+            <i data-lucide="volume-2"></i>
+          </button>
+          <button onclick="toggleCreateRoomModal(true)" class="p-2 hover:bg-chat-active rounded-full hover:text-white transition" title="Buat Room Baru">
+            <i data-lucide="plus"></i>
+          </button>
+          <button onclick="toggleSettingsModal(true)" class="p-2 hover:bg-chat-active rounded-full hover:text-white transition" title="Pengaturan Broker">
+            <i data-lucide="settings"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Connection Status Banner -->
+      <div id="conn-banner" class="px-4 py-2 text-xs flex items-center justify-between border-b bg-amber-950/40 border-amber-900/40 text-amber-400 transition-all duration-300">
+        <div class="flex items-center space-x-2">
+          <span id="conn-indicator" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          <span id="conn-text" class="font-medium">Menghubungkan ke Broker...</span>
+        </div>
+        <button onclick="toggleSettingsModal(true)" class="underline hover:text-white font-semibold transition">Ubah</button>
+      </div>
+
+      <!-- Search bar -->
+      <div class="p-3 bg-chat-sidebar">
+        <div class="relative flex items-center bg-chat-active rounded-lg px-3 py-2 text-gray-400">
+          <i data-lucide="search" class="mr-3 w-4 h-4"></i>
+          <input oninput="filterRooms(this.value)" type="text" placeholder="Cari obrolan..." class="bg-transparent border-none outline-none w-full text-sm text-gray-200 placeholder-gray-400">
+        </div>
+      </div>
+
+      <!-- Rooms list -->
+      <div id="rooms-list-container" class="flex-1 overflow-y-auto divide-y divide-gray-800/40">
+        <!-- Dyn contents -->
+      </div>
+    </div>
+
+    <!-- MAIN CHAT PANEL -->
+    <div class="flex-1 h-full flex flex-col relative bg-[#0b141a]">
+      <div class="chat-wallpaper"></div>
+      
+      <!-- Chat Header -->
+      <div class="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between z-10">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="toggleDetailsPanel()">
+          <div id="chat-header-avatar" class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold shrink-0">G</div>
+          <div>
+            <h3 id="chat-header-name" class="font-semibold text-white text-sm md:text-base leading-tight">General Lounge</h3>
+            <p id="chat-header-status" class="text-xs text-gray-400">Loading members...</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3 text-gray-300">
+          <button onclick="handleCallInitiate('voice')" class="p-2 hover:bg-chat-active rounded-full transition hover:text-white" title="Panggilan Suara"><i data-lucide="phone"></i></button>
+          <button onclick="handleCallInitiate('video')" class="p-2 hover:bg-chat-active rounded-full transition hover:text-white" title="Panggilan Video"><i data-lucide="video"></i></button>
+          <div class="w-px h-6 bg-gray-800"></div>
+          <button onclick="toggleDetailsPanel()" class="p-2 hover:bg-chat-active rounded-full transition hover:text-white"><i data-lucide="info"></i></button>
+        </div>
+      </div>
+
+      <!-- Chat Messages Body -->
+      <div id="chat-messages-container" class="flex-1 overflow-y-auto px-4 md:px-8 py-4 space-y-3 z-10 bg-transparent">
+        <!-- Messages loaded here -->
+      </div>
+
+      <!-- Emoji Bar Drawer Helper -->
+      <div id="emoji-drawer" class="hidden px-4 py-2 bg-chat-sidebar border-t border-gray-800 flex gap-2 overflow-x-auto z-10 animate-slideup">
+        <!-- emojis populated by JS -->
+      </div>
+
+      <!-- Input Form -->
+      <div class="mt-auto bg-chat-header border-t border-gray-800 p-3 z-10">
+        <form id="chat-form" onsubmit="sendMessage(event)" class="flex items-center space-x-3">
+          <div class="flex items-center space-x-1 text-gray-400">
+            <button type="button" onclick="toggleEmojiDrawer()" class="p-2 hover:bg-chat-active rounded-full"><i data-lucide="smile"></i></button>
+            <button type="button" onclick="triggerFileInput()" class="p-2 hover:bg-chat-active rounded-full" title="Kirim Foto (Max 10MB)"><i data-lucide="image"></i></button>
+            <input type="file" id="image-file-input" onchange="sendImageFile(event)" accept="image/*" class="hidden">
+            <button type="button" id="mic-btn" onclick="handleMicClick()" class="p-2 hover:bg-chat-active rounded-full transition" title="Mulai Rekam Suara"><i data-lucide="mic"></i></button>
+          </div>
+          <div id="input-container" class="flex-1 flex items-center">
+            <input id="chat-input" type="text" placeholder="Ketik pesan..." class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent placeholder-gray-500">
+          </div>
+          <button type="submit" id="send-btn" class="w-10 h-10 rounded-full bg-chat-accent text-white flex items-center justify-center hover:scale-105 transition"><i data-lucide="send" class="ml-0.5"></i></button>
+        </form>
+      </div>
+    </div>
+
+    <!-- DETAILS PANEL -->
+    <div id="details-panel" class="hidden w-[320px] h-full border-l border-gray-800 bg-chat-sidebar flex flex-col shrink-0 z-10 animate-slideup">
+      <div class="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white">
+        <span class="font-semibold text-sm">Informasi Grup</span>
+        <button onclick="toggleDetailsPanel(false)" class="p-1 hover:bg-chat-active rounded-full text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-6">
+        <div class="flex flex-col items-center text-center pb-4 border-b border-gray-800/40">
+          <div id="details-room-avatar" class="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-3xl font-bold mb-3 shadow">G</div>
+          <h4 id="details-room-name" class="font-semibold text-lg text-white">General Lounge</h4>
+          <p class="text-xs text-gray-400 mt-1">Topic: <code id="details-room-topic" class="bg-chat-active px-1 py-0.5 rounded text-teal-400 text-[10px]">mqtt_chat/rooms/general</code></p>
+        </div>
+        <div>
+          <h5 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Deskripsi</h5>
+          <p id="details-room-desc" class="text-sm text-gray-300 leading-relaxed bg-chat-active/30 p-3 rounded border border-gray-800/20">Deskripsi room...</p>
+        </div>
+        <div>
+          <h5 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Anggota Aktif</h5>
+          <div id="details-members-list" class="space-y-2">
+            <!-- Members list populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-chat-sidebar rounded-xl border border-gray-800 shadow-2xl overflow-hidden animate-slideup">
+      <div class="px-6 py-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white">
+        <span class="font-semibold text-base flex items-center"><i data-lucide="settings" class="mr-2 text-chat-accent"></i> Pengaturan Profil & MQTT</span>
+        <button onclick="toggleSettingsModal(false)" class="p-1 hover:bg-chat-active rounded-full text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
+      </div>
+      <div class="p-6 space-y-5">
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Username</label>
+          <input id="settings-username" type="text" class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-1 focus:ring-chat-accent">
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Pilih Avatar</label>
+          <div id="avatar-picker" class="flex gap-2 flex-wrap"></div>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">MQTT Broker URL (WebSockets)</label>
+          <input id="settings-broker" type="text" class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-1 focus:ring-chat-accent font-mono text-[11px]">
+        </div>
+        <div class="pt-2 border-t border-gray-800/40 flex justify-between items-center text-xs">
+          <button onclick="clearChatHistory()" class="text-rose-400 hover:text-rose-300 underline">Hapus Riwayat Chat</button>
+          <span class="text-gray-500 italic">MQTT Client over CDN</span>
+        </div>
+      </div>
+      <div class="px-6 py-3 bg-chat-header border-t border-gray-800 flex justify-end">
+        <button onclick="saveSettings()" class="bg-chat-accent text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:scale-105 transition">Simpan & Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE ROOM MODAL -->
+  <div id="create-room-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <form onsubmit="createNewRoom(event)" class="w-full max-w-md bg-chat-sidebar rounded-xl border border-gray-800 shadow-2xl overflow-hidden animate-slideup">
+      <div class="px-6 py-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white">
+        <span class="font-semibold text-base flex items-center"><i data-lucide="message-square" class="mr-2 text-chat-accent"></i> Buat Grup Baru</span>
+        <button type="button" onclick="toggleCreateRoomModal(false)" class="p-1 hover:bg-chat-active rounded-full text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Nama Grup</label>
+          <input id="new-room-name" type="text" required placeholder="Contoh: Tim Proyek, Kopi Pagi" class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent">
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Deskripsi</label>
+          <textarea id="new-room-desc" placeholder="Tuliskan detail grup..." class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-1 focus:ring-chat-accent h-20 resize-none"></textarea>
+        </div>
+      </div>
+      <div class="px-6 py-3 bg-chat-header border-t border-gray-800 flex justify-end space-x-3">
+        <button type="button" onclick="toggleCreateRoomModal(false)" class="text-gray-400 hover:text-white px-4 py-1.5 rounded-lg text-sm">Batal</button>
+        <button type="submit" class="bg-chat-accent text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:scale-105 transition">Buat Grup</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- WebRTC Call Overlay -->
+  <div id="call-overlay" class="hidden fixed inset-0 bg-gray-950/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-4xl flex flex-col h-full items-center justify-between py-8">
+      
+      <!-- Partner Info Header -->
+      <div class="text-center space-y-3 z-10">
+        <img id="call-partner-avatar" src="" class="w-24 h-24 rounded-full object-cover border-4 border-chat-accent/60 mx-auto shadow-2xl animate-pulse">
+        <h2 id="call-partner-name" class="text-2xl font-bold text-white tracking-wide">Target Username</h2>
+        <p id="call-status-text" class="text-sm text-chat-accent font-medium">Sedang Memanggil...</p>
+      </div>
+
+      <!-- Video Streams Container -->
+      <div id="video-streams-container" class="relative w-full flex-1 max-h-[60%] flex items-center justify-center my-6 rounded-2xl overflow-hidden bg-chat-active/20 border border-gray-800 shadow-inner">
+        <!-- Dyn video feeds -->
+      </div>
+
+      <!-- Calling Control Buttons -->
+      <div id="call-controls-container" class="flex items-center space-x-6 z-10">
+        <!-- Dyn controls -->
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // --- State & Initializations ---
+    const AVATARS = [
+      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80'
+    ];
+
+    let username = localStorage.getItem('mqtt_chat_username') || `User_${Math.floor(1000 + Math.random() * 9000)}`;
+    let avatar = localStorage.getItem('mqtt_chat_avatar') || AVATARS[Math.floor(Math.random() * AVATARS.length)];
+    let brokerUrl = localStorage.getItem('mqtt_chat_broker') || 'wss://broker.hivemq.com:8884/mqtt';
+    if (brokerUrl.includes(':8000/mqtt')) {
+      brokerUrl = brokerUrl.replace(':8000/mqtt', ':8884/mqtt');
+      localStorage.setItem('mqtt_chat_broker', brokerUrl);
+    }
+    let soundEnabled = localStorage.getItem('mqtt_chat_sound') !== 'false';
+    
+    let rooms = JSON.parse(localStorage.getItem('mqtt_chat_rooms')) || [
+      { id: 'general', name: 'General Lounge', description: 'Grup utama obrolan MQTT.' },
+      { id: 'tech', name: 'Tech & Code', description: 'Ruang diskusi pemograman dan teknologi.' },
+      { id: 'random', name: 'Random Fun', description: 'Ruang santai berbagi candaan dan meme.' }
+    ];
+    let activeRoom = rooms[0].id;
+    let messages = JSON.parse(localStorage.getItem('mqtt_chat_messages')) || {};
+    
+    let client = null;
+    let onlineUsers = {}; // { [roomId]: [ {username, avatar, lastSeen} ] }
+    let typingUsers = {}; // { [roomId]: { [username]: timestamp } }
+    let searchFilter = '';
+    
+    // --- Real Voice Note States ---
+    let isRecording = false;
+    let recordingTime = 0;
+    let mediaRecorderInstance = null;
+    let audioChunks = [];
+    let recordingTimer = null;
+    let playingAudioId = null;
+    let audioPlayer = null;
+
+    // --- Real WebRTC Calling Actions ---
+    let localStream = null;
+    let peerConnection = null;
+    let pendingCandidates = [];
+    let ringtoneCtx = null;
+    let ringtoneInterval = null;
+    let partnerUsername = '';
+    let partnerAvatar = '';
+    let callType = 'video';
+    let callState = 'idle'; // 'idle', 'calling', 'ringing', 'connected'
+    let isAudioMuted = false;
+    let isVideoMuted = false;
+
+    function playRingtone() {
+      try {
+        ringtoneCtx = new (window.AudioContext || window.webkitAudioContext)();
+        ringtoneInterval = setInterval(() => {
+          const osc = ringtoneCtx.createOscillator();
+          const gain = ringtoneCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, ringtoneCtx.currentTime);
+          osc.frequency.setValueAtTime(480, ringtoneCtx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.1, ringtoneCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ringtoneCtx.currentTime + 0.8);
+          osc.connect(gain);
+          gain.connect(ringtoneCtx.destination);
+          osc.start();
+          osc.stop(ringtoneCtx.currentTime + 0.9);
+        }, 1000);
+      } catch (e) { console.warn(e); }
+    }
+
+    function stopRingtone() {
+      if (ringtoneInterval) clearInterval(ringtoneInterval);
+      if (ringtoneCtx) {
+        try { ringtoneCtx.close(); } catch(e) {}
+        ringtoneCtx = null;
+      }
+    }
+
+    function setupPeerConnection() {
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && client && client.connected) {
+          const payload = {
+            type: 'candidate',
+            candidate: event.candidate,
+            from: username
+          };
+          client.publish(`mqtt_chat/calls/${activeRoom}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        const remoteVideo = document.getElementById('remote-video');
+        if (remoteVideo) {
+          remoteVideo.srcObject = event.streams[0];
+        }
+      };
+
+      peerConnection = pc;
+      return pc;
+    }
+
+    async function startCall(type, targetUser, targetAv) {
+      callType = type;
+      partnerUsername = targetUser;
+      partnerAvatar = targetAv;
+      callState = 'calling';
+      updateCallUI();
+
+      try {
+        const constraints = { audio: true, video: type === 'video' };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        const localVideo = document.getElementById('local-video');
+        if (localVideo) localVideo.srcObject = localStream;
+
+        const pc = setupPeerConnection();
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const payload = {
+          type: 'offer',
+          sdp: offer,
+          from: username,
+          avatar: avatar,
+          callType: type
+        };
+        client.publish(`mqtt_chat/calls/${activeRoom}/${targetUser}`, JSON.stringify(payload), { qos: 1 });
+      } catch (err) {
+        console.error(err);
+        alert('Gagal mengakses kamera/mikrofon.');
+        endCall();
+      }
+    }
+
+    async function acceptCall() {
+      stopRingtone();
+      callState = 'connected';
+      updateCallUI();
+
+      try {
+        const constraints = { audio: true, video: callType === 'video' };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        setTimeout(() => {
+          const localVideo = document.getElementById('local-video');
+          if (localVideo) localVideo.srcObject = localStream;
+        }, 100);
+
+        const offerSdp = peerConnection ? peerConnection.pendingOfferSdp : null;
+        const pc = setupPeerConnection();
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+        await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
+
+        // Add any ice candidates received before peer connection was active (must be AFTER setRemoteDescription)
+        pendingCandidates.forEach(candidate => {
+          pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
+        });
+        pendingCandidates = [];
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        const payload = {
+          type: 'answer',
+          sdp: answer,
+          from: username
+        };
+        client.publish(`mqtt_chat/calls/${activeRoom}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
+      } catch (err) {
+        console.error(err);
+        endCall();
+      }
+    }
+
+    function endCall(sendSignal = true) {
+      stopRingtone();
+      callState = 'idle';
+      isAudioMuted = false;
+      isVideoMuted = false;
+      updateCallUI();
+
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+
+      if (peerConnection) {
+        try { peerConnection.close(); } catch(e) {}
+        peerConnection = null;
+      }
+
+      pendingCandidates = [];
+
+      if (sendSignal && client && client.connected && partnerUsername) {
+        const payload = {
+          type: 'hangup',
+          from: username
+        };
+        client.publish(`mqtt_chat/calls/${activeRoom}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
+      }
+    }
+
+    async function handleCallSignal(data) {
+      if (data.type === 'offer') {
+        if (callState !== 'idle') {
+          const payload = { type: 'hangup', from: username, reason: 'busy' };
+          client.publish(`mqtt_chat/calls/${activeRoom}/${data.from}`, JSON.stringify(payload), { qos: 1 });
+          return;
+        }
+        partnerUsername = data.from;
+        partnerAvatar = data.avatar || AVATARS[0];
+        callType = data.callType;
+        callState = 'ringing';
+        updateCallUI();
+        
+        peerConnection = { pendingOfferSdp: data.sdp };
+        playRingtone();
+      } else if (data.type === 'answer') {
+        if (peerConnection && callState === 'calling') {
+          callState = 'connected';
+          updateCallUI();
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          pendingCandidates.forEach(candidate => {
+            peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
+          });
+          pendingCandidates = [];
+        }
+      } else if (data.type === 'candidate') {
+        if (peerConnection && peerConnection.setRemoteDescription && peerConnection.remoteDescription) {
+          peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(e => console.warn(e));
+        } else {
+          pendingCandidates.push(data.candidate);
+        }
+      } else if (data.type === 'hangup') {
+        if (data.reason === 'busy') {
+          alert(`${partnerUsername} sedang sibuk.`);
+        }
+        endCall(false);
+      }
+    }
+
+    function toggleAudioMute() {
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = !audioTrack.enabled;
+          isAudioMuted = !audioTrack.enabled;
+          updateCallUI();
+        }
+      }
+    }
+
+    function toggleVideoMute() {
+      if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.enabled = !videoTrack.enabled;
+          isVideoMuted = !videoTrack.enabled;
+          updateCallUI();
+        }
+      }
+    }
+
+    function handleCallInitiate(type) {
+      const online = onlineUsers[activeRoom] || [];
+      if (online.length === 0) {
+        alert('Tidak ada anggota online di grup ini yang dapat dihubungi saat ini.');
+        return;
+      }
+      const firstOnline = online[0];
+      startCall(type, firstOnline.username, firstOnline.avatar);
+    }
+
+    function updateCallUI() {
+      const overlay = document.getElementById('call-overlay');
+      if (callState === 'idle') {
+        overlay.classList.add('hidden');
+        return;
+      }
+
+      overlay.classList.remove('hidden');
+      document.getElementById('call-partner-avatar').src = partnerAvatar || AVATARS[0];
+      document.getElementById('call-partner-name').innerText = partnerUsername;
+
+      let status = '';
+      if (callState === 'calling') status = 'Sedang Memanggil...';
+      else if (callState === 'ringing') status = `Panggilan ${callType === 'video' ? 'Video' : 'Suara'} Masuk...`;
+      else if (callState === 'connected') status = `Terhubung • Panggilan ${callType === 'video' ? 'Video' : 'Suara'}`;
+      document.getElementById('call-status-text').innerText = status;
+
+      // Streams Container
+      const streamsContainer = document.getElementById('video-streams-container');
+      if (callType === 'video') {
+        streamsContainer.innerHTML = `
+          <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+          <video id="local-video" autoplay playsinline muted class="absolute bottom-4 right-4 w-32 md:w-44 aspect-video rounded-lg border-2 border-chat-accent/80 object-cover shadow-2xl"></video>
+        `;
+      } else {
+        streamsContainer.innerHTML = `
+          <div class="flex flex-col items-center justify-center space-y-3">
+            <div class="w-20 h-20 rounded-full bg-chat-accent/10 border border-chat-accent/30 flex items-center justify-center text-chat-accent animate-ping">
+              <i data-lucide="phone" class="w-10 h-10"></i>
+            </div>
+            <span class="text-xs text-gray-500">Audio Only Mode</span>
+          </div>
+        `;
+      }
+
+      // Control buttons
+      const controlsContainer = document.getElementById('call-controls-container');
+      if (callState === 'ringing') {
+        controlsContainer.innerHTML = `
+          <button onclick="endCall(true)" class="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg hover:scale-105 transition"><i data-lucide="phone-off"></i></button>
+          <button onclick="acceptCall()" class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-lg hover:scale-105 transition animate-bounce"><i data-lucide="phone" class="rotate-12"></i></button>
+        `;
+      } else {
+        controlsContainer.innerHTML = `
+          \${callState === 'connected' ? \`
+            <button onclick="toggleAudioMute()" class="w-12 h-12 rounded-full flex items-center justify-center shadow transition \${isAudioMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'\}">
+              <i data-lucide="\${isAudioMuted ? 'mic-off' : 'mic'\}"></i>
+            </button>
+          \` : ''}
+          <button onclick="endCall(true)" class="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg hover:scale-105 transition"><i data-lucide="phone-off"></i></button>
+          \${callState === 'connected' && callType === 'video' ? \`
+            <button onclick="toggleVideoMute()" class="w-12 h-12 rounded-full flex items-center justify-center shadow transition \${isVideoMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'\}">
+              <i data-lucide="\${isVideoMuted ? 'video-off' : 'video'\}"></i>
+            </button>
+          \` : ''}
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    // --- Sound Synthesis ---
+    function playSound() {
+      if (!soundEnabled) return;
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08); // A5
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (e) { console.warn(e); }
+    }
+
+    // --- Init UI ---
+    function initUI() {
+      document.getElementById('my-username').innerText = username;
+      document.getElementById('my-avatar').src = avatar;
+      
+      // Update Sound Button Icon
+      const soundBtn = document.getElementById('sound-btn');
+      soundBtn.innerHTML = soundEnabled ? '<i data-lucide="volume-2"></i>' : '<i data-lucide="volume-x"></i>';
+      
+      // Setup Settings fields
+      document.getElementById('settings-username').value = username;
+      document.getElementById('settings-broker').value = brokerUrl;
+      
+      // Render Avatar List Picker
+      const avPicker = document.getElementById('avatar-picker');
+      avPicker.innerHTML = AVATARS.map(av => `
+        <button onclick="selectAvatar('${av}')" class="w-12 h-12 rounded-full overflow-hidden border-2 transition ${avatar === av ? 'border-chat-accent scale-110 shadow-lg' : 'border-transparent hover:border-gray-700'}">
+          <img src="${av}" class="w-full h-full object-cover">
+        </button>
+      `).join('');
+
+      // Render Emojis
+      const emojiDrawer = document.getElementById('emoji-drawer');
+      const emojis = ['😀','😂','😍','👍','🔥','🙌','👏','🎉','❤️','🤔','💡','🚀','👀','❌','✅','💤'];
+      emojiDrawer.innerHTML = emojis.map(em => `
+        <button type="button" onclick="insertEmoji('${em}')" class="text-xl p-2 hover:bg-chat-active rounded transition transform hover:scale-110">${em}</button>
+      `).join('');
+
+      renderRooms();
+      renderActiveRoomHeader();
+      renderMessages();
+      lucide.createIcons();
+    }
+
+    // --- Render Rooms ---
+    function renderRooms() {
+      const container = document.getElementById('rooms-list-container');
+      const filtered = rooms.filter(r => r.name.toLowerCase().includes(searchFilter.toLowerCase()));
+      
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm">Tidak ada room ditemukan.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(room => {
+        const isSelected = room.id === activeRoom;
+        const roomMsgs = messages[room.id] || [];
+        const lastMsg = roomMsgs[roomMsgs.length - 1];
+        const lastMsgText = lastMsg 
+          ? `<span class="text-gray-300 font-medium">${lastMsg.sender === username ? 'Anda' : lastMsg.sender}: </span>${lastMsg.text}`
+          : (room.description || 'Belum ada pesan');
+        const lastTime = lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+
+        return `
+          <button onclick="switchRoom('${room.id}')" class="w-full text-left p-4 flex items-center space-x-3 transition-colors ${isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'}">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-xl font-bold shrink-0">
+              ${room.name.charAt(0)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline mb-1">
+                <span class="font-semibold text-white text-base truncate">${room.name}</span>
+                <span class="text-[11px] text-gray-400 shrink-0">${lastTime}</span>
+              </div>
+              <p class="text-sm text-gray-400 truncate">${lastMsgText}</p>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function switchRoom(roomId) {
+      activeRoom = roomId;
+      document.getElementById('emoji-drawer').classList.add('hidden');
+      renderRooms();
+      renderActiveRoomHeader();
+      renderMessages();
+      announcePresence();
+    }
+
+    function renderActiveRoomHeader() {
+      const room = rooms.find(r => r.id === activeRoom) || rooms[0];
+      document.getElementById('chat-header-avatar').innerText = room.name.charAt(0);
+      document.getElementById('chat-header-name').innerText = room.name;
+
+      const online = onlineUsers[activeRoom] || [];
+      const statusText = online.length > 0
+        ? `<span class="text-emerald-400 font-medium">${online.length + 1} online (${username}, ${online.map(u=>u.username).join(', ')})</span>`
+        : 'Hanya Anda di grup ini';
+      document.getElementById('chat-header-status').innerHTML = statusText;
+
+      // Update details panel info
+      document.getElementById('details-room-avatar').innerText = room.name.charAt(0);
+      document.getElementById('details-room-name').innerText = room.name;
+      document.getElementById('details-room-topic').innerText = `mqtt_chat/rooms/${room.id}`;
+      document.getElementById('details-room-desc').innerText = room.description || 'Grup chat MQTT.';
+      
+      const detailsList = document.getElementById('details-members-list');
+      detailsList.innerHTML = `
+        <div class="flex items-center space-x-2.5 p-1">
+          <img src="${avatar}" class="w-8 h-8 rounded-full object-cover">
+          <span class="text-sm text-white font-medium">${username} <span class="text-[10px] text-emerald-400 bg-emerald-950/40 px-1 py-0.2 rounded ml-1">Anda</span></span>
+        </div>
+        ` + online.map(m => `
+        <div class="flex items-center space-x-2.5 p-1">
+          <img src="${m.avatar}" class="w-8 h-8 rounded-full object-cover">
+          <span class="text-sm text-gray-300 font-medium">${m.username}</span>
+        </div>
+      `).join('');
+    }
+
+    // --- Render Chat Messages ---
+    function renderMessages() {
+      const container = document.getElementById('chat-messages-container');
+      const roomMsgs = messages[activeRoom] || [];
+
+      if (roomMsgs.length === 0) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center h-full text-center p-8 max-w-sm mx-auto my-auto mt-20">
+            <div class="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-4">
+              <i data-lucide="message-square" class="w-8 h-8"></i>
+            </div>
+            <h3 class="font-semibold text-lg text-white mb-2">Selamat datang!</h3>
+            <p class="text-sm text-gray-400">Kirim pesan Anda di bawah untuk memulai percakapan MQTT real-time.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = roomMsgs.map((msg, index) => {
+        const isSelf = msg.sender === username;
+        const time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        let content = '';
+        if (msg.type === 'image') {
+          content = `<img src="${msg.mediaData}" class="rounded max-h-64 object-cover border border-black/10">`;
+        } else if (msg.type === 'audio') {
+          const isPlaying = playingAudioId === msg.id;
+          content = `
+            <div class="flex items-center space-x-3 py-2 px-1 min-w-[200px]">
+              <button type="button" onclick="playAudio('${msg.id}', '${msg.mediaData}')" class="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow">
+                <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="w-4 h-4 ${isPlaying ? '' : 'ml-0.5'}"></i>
+              </button>
+              <div class="flex-1">
+                <div class="flex gap-0.5 items-center">
+                  ${[...Array(12)].map((_, i) => `
+                    <div class="h-3 w-[2px] rounded ${isPlaying && i % 3 === 0 ? 'h-5' : ''} bg-gray-400 transition-all duration-300"></div>
+                  `).join('')}
+                </div>
+                <span class="text-[9px] opacity-70 block mt-1">${msg.text || 'Voice Note'}</span>
+              </div>
+            </div>
+          `;
+        } else {
+          content = `<p class="text-sm leading-relaxed break-words whitespace-pre-wrap">${msg.text}</p>`;
+        }
+
+        return `
+          <div class="flex w-full ${isSelf ? 'justify-end' : 'justify-start'}">
+            <div class="max-w-[70%] rounded-lg px-3 py-1.5 shadow-md relative group animate-slideup ${isSelf ? 'bg-chat-outgoing text-emerald-50 rounded-tr-none' : 'bg-chat-incoming text-gray-100 rounded-tl-none'}">
+              ${!isSelf ? `
+                <div class="flex items-center space-x-1.5 mb-1">
+                  <img src="${msg.avatar}" class="w-4 h-4 rounded-full object-cover">
+                  <span class="text-xs font-semibold text-emerald-400">${msg.sender}</span>
+                </div>
+              ` : ''}
+              ${content}
+              <div class="flex items-center justify-end space-x-1 mt-1 text-[10px] text-gray-400/80">
+                <span>${time}</span>
+                ${isSelf ? `<span class="text-teal-400"><i data-lucide="check-check" class="w-3.5 h-3.5"></i></span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Render Typing Indicator if active
+      const typingList = Object.keys(typingUsers[activeRoom] || {});
+      if (typingList.length > 0) {
+        container.innerHTML += `
+          <div class="flex justify-start items-center space-x-2 animate-pulse mt-2">
+            <div class="px-3 py-2 bg-chat-incoming text-gray-400 rounded-lg rounded-tl-none text-xs flex items-center space-x-2 border border-gray-800/30">
+              <div class="flex items-center space-x-1 pr-1">
+                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
+              </div>
+              <span>${typingList.join(', ')} sedang mengetik...</span>
+            </div>
+          </div>
+        `;
+      }
+
+      container.scrollTop = container.scrollHeight;
+      lucide.createIcons();
+    }
+
+    // --- MQTT Connection ---
+    function connectMQTT() {
+      document.getElementById('conn-banner').className = "px-4 py-2 text-xs flex items-center justify-between border-b bg-amber-950/40 border-amber-900/40 text-amber-400 transition-all duration-300";
+      document.getElementById('conn-indicator').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+      document.getElementById('conn-text').innerText = "Sedang menghubungkan ke Broker...";
+
+      if (client) {
+        client.end();
+      }
+
+      const clientId = `mqtt_wa_easy_${Math.random().toString(16).substring(2, 10)}`;
+      client = mqtt.connect(brokerUrl, {
+        clientId,
+        clean: true,
+        connectTimeout: 4000,
+        reconnectPeriod: 2000
+      });
+
+      client.on('connect', () => {
+        document.getElementById('conn-banner').className = "px-4 py-2 text-xs flex items-center justify-between border-b bg-emerald-950/40 border-emerald-900/40 text-emerald-400 transition-all duration-300";
+        document.getElementById('conn-indicator').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+        document.getElementById('conn-text').innerText = "Terhubung ke HiveMQ Broker";
+
+        // Subscribe
+        rooms.forEach(r => {
+          client.subscribe(`mqtt_chat/rooms/${r.id}`);
+          client.subscribe(`mqtt_chat/rooms/${r.id}/typing`);
+          client.subscribe(`mqtt_chat/rooms/${r.id}/presence`);
+          client.subscribe(`mqtt_chat/calls/${r.id}/${username}`);
+        });
+
+        announcePresence();
+      });
+
+      client.on('message', (topic, payload) => {
+        try {
+          const data = JSON.parse(payload.toString());
+          const parts = topic.split('/');
+          const roomId = parts[2];
+          
+          if (topic.includes('/calls/')) {
+            if (data.from !== username) {
+              handleCallSignal(data);
+            }
+            return;
+          }
+
+          if (topic.endsWith('/typing')) {
+            if (data.username !== username) {
+              if (!typingUsers[roomId]) typingUsers[roomId] = {};
+              if (data.isTyping) {
+                typingUsers[roomId][data.username] = Date.now();
+              } else {
+                delete typingUsers[roomId][data.username];
+              }
+              if (roomId === activeRoom) renderMessages();
+            }
+            return;
+          }
+
+          if (topic.endsWith('/presence')) {
+            if (data.username !== username) {
+              if (!onlineUsers[roomId]) onlineUsers[roomId] = [];
+              onlineUsers[roomId] = onlineUsers[roomId].filter(u => u.username !== data.username);
+              onlineUsers[roomId].push({ username: data.username, avatar: data.avatar, lastSeen: Date.now() });
+              if (roomId === activeRoom) renderActiveRoomHeader();
+            }
+            return;
+          }
+
+          // Normal Message
+          if (roomId) {
+            if (!messages[roomId]) messages[roomId] = [];
+            if (messages[roomId].some(m => m.id === data.id)) return; // prevent duplicate
+
+            messages[roomId].push({
+              id: data.id,
+              sender: data.username,
+              avatar: data.avatar,
+              text: data.text,
+              type: data.type || 'text',
+              mediaData: data.mediaData,
+              timestamp: data.timestamp
+            });
+
+            localStorage.setItem('mqtt_chat_messages', JSON.stringify(messages));
+            
+            if (roomId === activeRoom) {
+              renderMessages();
+              renderRooms();
+            }
+            if (data.username !== username) {
+              playSound();
+            }
+          }
+        } catch (e) { console.error(e); }
+      });
+
+      client.on('error', () => {
+        document.getElementById('conn-banner').className = "px-4 py-2 text-xs flex items-center justify-between border-b bg-rose-950/40 border-rose-900/40 text-rose-400 transition-all duration-300";
+        document.getElementById('conn-indicator').className = "w-2 h-2 rounded-full bg-rose-500";
+        document.getElementById('conn-text').innerText = "Gagal terhubung ke Broker";
+      });
+
+      client.on('close', () => {
+        document.getElementById('conn-banner').className = "px-4 py-2 text-xs flex items-center justify-between border-b bg-rose-950/40 border-rose-900/40 text-rose-400 transition-all duration-300";
+        document.getElementById('conn-indicator').className = "w-2 h-2 rounded-full bg-rose-500";
+        document.getElementById('conn-text').innerText = "Terputus dari Broker";
+      });
+    }
+
+    function announcePresence() {
+      if (!client || !client.connected) return;
+      const payload = JSON.stringify({ username, avatar, timestamp: Date.now() });
+      rooms.forEach(r => {
+        client.publish(`mqtt_chat/rooms/${r.id}/presence`, payload, { qos: 0 });
+      });
+    }
+
+    // Monitor timeouts for presence/typing
+    setInterval(() => {
+      const MathTime = Date.now();
+      let updated = false;
+
+      // Clean typing
+      Object.keys(typingUsers).forEach(roomId => {
+        Object.keys(typingUsers[roomId]).forEach(user => {
+          if (MathTime - typingUsers[roomId][user] > 4000) {
+            delete typingUsers[roomId][user];
+            updated = true;
+          }
+        });
+      });
+
+      // Clean presence
+      Object.keys(onlineUsers).forEach(roomId => {
+        const before = onlineUsers[roomId].length;
+        onlineUsers[roomId] = onlineUsers[roomId].filter(u => MathTime - u.lastSeen < 12000);
+        if (onlineUsers[roomId].length !== before) {
+          updated = true;
+        }
+      });
+
+      if (updated) {
+        renderMessages();
+        renderActiveRoomHeader();
+      }
+      announcePresence();
+    }, 5000);
+
+    // --- Message Actions ---
+    function sendMessage(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const val = input.value.trim();
+      if (!val || !client || !client.connected) return;
+
+      // confetti egg
+      if (val.toLowerCase() === '/confetti') {
+        confetti({ particleCount: 150, spread: 80 });
+      }
+
+      const payload = {
+        id: `msg_easy_${Math.random().toString(36).substring(2, 12)}`,
+        username,
+        avatar,
+        text: val,
+        type: 'text',
+        timestamp: Date.now()
+      };
+
+      client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+      input.value = '';
+      sendTypingState(false);
+    }
+
+    function triggerFileInput() {
+      document.getElementById('image-file-input').click();
+    }
+
+    // Canvas quality photo compress
+    function sendImageFile(e) {
+      const file = e.target.files[0];
+      if (!file || !client || !client.connected) return;
+
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Ukuran file melebihi batas maksimal 10 MB.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Compress quality (0.7)
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+          const payload = {
+            id: `msg_easy_${Math.random().toString(36).substring(2, 12)}`,
+            username,
+            avatar,
+            text: `📷 Mengirim foto: ${file.name}`,
+            type: 'image',
+            mediaData: compressedBase64,
+            timestamp: Date.now()
+          };
+
+          client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // --- Real Voice Note Actions ---
+    async function handleMicClick() {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        await startRecording();
+      }
+    }
+
+    async function startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorderInstance = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorderInstance.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorderInstance.onstop = () => {
+          const duration = recordingTime;
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          
+          stream.getTracks().forEach(track => track.stop());
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (reader.result.length > 250 * 1024) {
+              alert('Ukuran rekaman audio terlalu besar. Silakan rekam pesan yang lebih pendek (maksimal 15-20 detik).');
+              return;
+            }
+
+            const payload = {
+              id: `msg_easy_${Math.random().toString(36).substring(2, 12)}`,
+              username,
+              avatar,
+              text: `🎤 Voice note (${duration}s)`,
+              type: 'audio',
+              mediaData: reader.result,
+              timestamp: Date.now()
+            };
+
+            if (client && client.connected) {
+              client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+            }
+          };
+          reader.readAsDataURL(audioBlob);
+        };
+
+        mediaRecorderInstance.start();
+        isRecording = true;
+        recordingTime = 0;
+        updateRecordingUI(true);
+
+        recordingTimer = setInterval(() => {
+          recordingTime++;
+          document.getElementById('recording-timer-text').innerText = `Merekam: ${recordingTime} detik (Maks 20s)`;
+          if (recordingTime >= 20) {
+            stopRecording();
+          }
+        }, 1000);
+      } catch (err) {
+        console.error(err);
+        alert('Gagal mengakses mikrofon. Berikan izin akses mikrofon di browser Anda.');
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') {
+        mediaRecorderInstance.stop();
+      }
+      isRecording = false;
+      clearInterval(recordingTimer);
+      updateRecordingUI(false);
+    }
+
+    function cancelRecording() {
+      if (mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') {
+        mediaRecorderInstance.onstop = () => {
+          if (mediaRecorderInstance.stream) {
+            mediaRecorderInstance.stream.getTracks().forEach(track => track.stop());
+          }
+        };
+        mediaRecorderInstance.stop();
+      }
+      isRecording = false;
+      clearInterval(recordingTimer);
+      updateRecordingUI(false);
+    }
+
+    function updateRecordingUI(recording) {
+      const inputContainer = document.getElementById('input-container');
+      const micBtn = document.getElementById('mic-btn');
+      const sendBtn = document.getElementById('send-btn');
+
+      if (recording) {
+        micBtn.className = "p-2 text-red-500 animate-pulse rounded-full bg-chat-active";
+        micBtn.title = "Kirim Rekaman";
+        sendBtn.disabled = true;
+        
+        inputContainer.innerHTML = `
+          <div class="flex-1 flex items-center justify-between bg-red-950/40 border border-red-900/40 py-2 px-4 rounded-lg text-red-400 animate-pulse text-sm">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+              <span id="recording-timer-text" class="font-semibold">Merekam: 0 detik (Maks 20s)</span>
+            </div>
+            <button type="button" onclick="cancelRecording()" class="text-gray-400 hover:text-white underline font-semibold text-xs transition">
+              Batal
+            </button>
+          </div>
+        `;
+      } else {
+        micBtn.className = "p-2 hover:bg-chat-active rounded-full transition text-gray-400 hover:text-white";
+        micBtn.title = "Mulai Rekam Suara";
+        sendBtn.disabled = false;
+        
+        inputContainer.innerHTML = `
+          <input id="chat-input" type="text" placeholder="Ketik pesan..." class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent placeholder-gray-500">
+        `;
+        
+        // Re-attach input event listener for typing indicators
+        document.getElementById('chat-input').addEventListener('input', () => {
+          sendTypingState(true);
+          if (typingTimeout) clearTimeout(typingTimeout);
+          typingTimeout = setTimeout(() => {
+            sendTypingState(false);
+          }, 2000);
+        });
+      }
+      lucide.createIcons();
+    }
+
+    function playAudio(msgId, base64Data) {
+      if (playingAudioId === msgId) {
+        if (audioPlayer) audioPlayer.pause();
+        playingAudioId = null;
+        renderMessages();
+      } else {
+        if (audioPlayer) audioPlayer.pause();
+        audioPlayer = new Audio(base64Data);
+        playingAudioId = msgId;
+        renderMessages();
+        
+        audioPlayer.onended = () => {
+          playingAudioId = null;
+          renderMessages();
+        };
+        audioPlayer.play().catch(err => {
+          console.error(err);
+        });
+      }
+    }
+
+    // --- Typing indicator logic ---
+    let isCurrentlyTyping = false;
+    let typingTimeout = null;
+
+    document.getElementById('chat-input').addEventListener('input', () => {
+      sendTypingState(true);
+      if (typingTimeout) clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        sendTypingState(false);
+      }, 2000);
+    });
+
+    function sendTypingState(isTyping) {
+      if (!client || !client.connected || isCurrentlyTyping === isTyping) return;
+      isCurrentlyTyping = isTyping;
+      client.publish(`mqtt_chat/rooms/${activeRoom}/typing`, JSON.stringify({ username, isTyping }), { qos: 0 });
+    }
+
+    // --- Modals & Settings ---
+    function toggleSettingsModal(show) {
+      document.getElementById('settings-modal').classList.toggle('hidden', !show);
+    }
+    
+    function selectAvatar(url) {
+      avatar = url;
+      localStorage.setItem('mqtt_chat_avatar', url);
+      initUI();
+    }
+
+    function saveSettings() {
+      const uInput = document.getElementById('settings-username').value.trim();
+      const bInput = document.getElementById('settings-broker').value.trim();
+      let forceReconnect = false;
+
+      if (uInput && uInput !== username) {
+        username = uInput;
+        localStorage.setItem('mqtt_chat_username', username);
+        forceReconnect = true;
+      }
+
+      if (bInput && bInput !== brokerUrl) {
+        brokerUrl = bInput;
+        localStorage.setItem('mqtt_chat_broker', brokerUrl);
+        forceReconnect = true;
+      }
+
+      if (forceReconnect) {
+        connectMQTT();
+      }
+
+      toggleSettingsModal(false);
+      initUI();
+    }
+
+    function clearChatHistory() {
+      if (confirm('Bersihkan riwayat pesan dari localStorage?')) {
+        messages = {};
+        localStorage.removeItem('mqtt_chat_messages');
+        renderMessages();
+        renderRooms();
+        toggleSettingsModal(false);
+      }
+    }
+
+    // Toggle Sound
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      localStorage.setItem('mqtt_chat_sound', soundEnabled);
+      initUI();
+    }
+
+    function toggleCreateRoomModal(show) {
+      document.getElementById('create-room-modal').classList.toggle('hidden', !show);
+    }
+
+    function createNewRoom(e) {
+      e.preventDefault();
+      const name = document.getElementById('new-room-name').value.trim();
+      const desc = document.getElementById('new-room-desc').value.trim();
+      if (!name) return;
+
+      const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      if (rooms.some(r => r.id === id)) {
+        alert('Nama grup sudah ada!');
+        return;
+      }
+
+      rooms.push({ id, name, description: desc || 'Grup baru MQTT Chat.' });
+      localStorage.setItem('mqtt_chat_rooms', JSON.stringify(rooms));
+      
+      if (client && client.connected) {
+        client.subscribe(`mqtt_chat/rooms/${id}`);
+        client.subscribe(`mqtt_chat/rooms/${id}/typing`);
+        client.subscribe(`mqtt_chat/rooms/${id}/presence`);
+        client.subscribe(`mqtt_chat/calls/${id}/${username}`);
+      }
+
+      activeRoom = id;
+      document.getElementById('new-room-name').value = '';
+      document.getElementById('new-room-desc').value = '';
+      
+      toggleCreateRoomModal(false);
+      initUI();
+    }
+
+    function toggleDetailsPanel(show) {
+      const panel = document.getElementById('details-panel');
+      if (show === undefined) {
+        panel.classList.toggle('hidden');
+      } else {
+        panel.classList.toggle('hidden', !show);
+      }
+    }
+
+    function toggleEmojiDrawer() {
+      document.getElementById('emoji-drawer').classList.toggle('hidden');
+    }
+
+    function insertEmoji(em) {
+      const input = document.getElementById('chat-input');
+      input.value += em;
+      document.getElementById('emoji-drawer').classList.add('hidden');
+      input.focus();
+    }
+
+    function filterRooms(val) {
+      searchFilter = val;
+      renderRooms();
+    }
+
+    // --- On Load ---
+    window.addEventListener('load', () => {
+      initUI();
+      connectMQTT();
+    });
+  </script>
+</body>
+</html>
