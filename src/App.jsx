@@ -30,7 +30,8 @@ import {
   Pause,
   MicOff,
   VideoOff,
-  PhoneOff
+  PhoneOff,
+  ArrowLeft
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -81,6 +82,10 @@ export default function App() {
       { id: 'random', name: 'Random Fun', description: 'Tempat berbagi meme, candaan, dan topik menarik lainnya.' }
     ];
   });
+  const [dms, setDms] = useState(() => {
+    const saved = localStorage.getItem('mqtt_chat_dms');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [activeRoom, setActiveRoom] = useState(rooms[0].id);
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('mqtt_chat_messages');
@@ -88,6 +93,10 @@ export default function App() {
   });
 
   // --- UI Interactions ---
+  const [activeTab, setActiveTab] = useState('rooms'); // 'rooms' | 'dms'
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat' | 'details'
+  const [showStartDmModal, setShowStartDmModal] = useState(false);
+  const [newDmUsername, setNewDmUsername] = useState('');
   const [messageText, setMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -140,6 +149,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('mqtt_chat_rooms', JSON.stringify(rooms));
   }, [rooms]);
+
+  useEffect(() => {
+    localStorage.setItem('mqtt_chat_dms', JSON.stringify(dms));
+  }, [dms]);
 
   useEffect(() => {
     localStorage.setItem('mqtt_chat_messages', JSON.stringify(messages));
@@ -210,6 +223,46 @@ export default function App() {
       } catch (e) {}
       ringtoneRef.current = null;
     }
+  };
+
+  const getDmPartner = (roomId) => {
+    if (!roomId || !roomId.startsWith('dm_')) return null;
+    const partnerName = roomId.replace('dm_', '').split('_').find(u => u !== username);
+    const dmContact = dms.find(d => d.username === partnerName);
+    return dmContact || { username: partnerName, avatar: AVATARS[0] };
+  };
+
+  const startDmWithUser = (targetUsername, targetAvatar) => {
+    if (targetUsername === username) return;
+    
+    // Check if already exists in DMs
+    const existingDm = dms.find(d => d.username === targetUsername);
+    let updatedDms = dms;
+    if (!existingDm) {
+      const newDm = { username: targetUsername, avatar: targetAvatar || AVATARS[0] };
+      updatedDms = [...dms, newDm];
+      setDms(updatedDms);
+      localStorage.setItem('mqtt_chat_dms', JSON.stringify(updatedDms));
+    }
+
+    // Send an invite ping so they also subscribe
+    if (client && connectionStatus === 'connected') {
+      const dmRoomId = 'dm_' + [username, targetUsername].sort().join('_');
+      client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}`);
+      client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/typing`);
+      client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/presence`);
+      client.publish(`mqtt_chat/users/${targetUsername}/dms`, JSON.stringify({
+        type: 'invite',
+        sender: username,
+        avatar: avatar
+      }), { qos: 1 });
+    }
+
+    const dmRoomId = 'dm_' + [username, targetUsername].sort().join('_');
+    setActiveRoom(dmRoomId);
+    setActiveTab('dms');
+    setMobileView('chat');
+    setShowDetails(false);
   };
 
   // Start peer connection setup
@@ -418,12 +471,23 @@ export default function App() {
   };
 
   const handleCallInitiate = (type) => {
-    if (activeRoomOnline.length === 0) {
-      alert('Tidak ada anggota online di grup ini yang dapat dihubungi saat ini.');
-      return;
+    const isDm = activeRoom.startsWith('dm_');
+    if (isDm) {
+      const partner = getDmPartner(activeRoom);
+      const isPartnerOnline = activeRoomOnline.some(u => u.username === partner.username);
+      if (!isPartnerOnline) {
+        alert(`${partner.username} sedang offline.`);
+        return;
+      }
+      startCall(type, partner.username, partner.avatar);
+    } else {
+      if (activeRoomOnline.length === 0) {
+        alert('Tidak ada anggota online di grup ini yang dapat dihubungi saat ini.');
+        return;
+      }
+      const firstOnline = activeRoomOnline[0];
+      startCall(type, firstOnline.username, firstOnline.avatar);
     }
-    const firstOnline = activeRoomOnline[0];
-    startCall(type, firstOnline.username, firstOnline.avatar);
   };
 
 
@@ -448,6 +512,17 @@ export default function App() {
         mqttClient.subscribe(`mqtt_chat/rooms/${room.id}/presence`);
         mqttClient.subscribe(`mqtt_chat/calls/${room.id}/${username}`);
       });
+      // Subscribe to DM channels
+      dms.forEach(dm => {
+        const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
+        mqttClient.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}`);
+        mqttClient.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/typing`);
+        mqttClient.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/presence`);
+        mqttClient.subscribe(`mqtt_chat/calls/${dmRoomId}/${username}`);
+      });
+      // Subscribe to DM invites
+      mqttClient.subscribe(`mqtt_chat/users/${username}/dms`);
+      
       // Announce self
       announcePresence(mqttClient);
     });
@@ -456,6 +531,27 @@ export default function App() {
       try {
         const data = JSON.parse(payload.toString());
         
+        // Handle DM invites
+        if (topic === `mqtt_chat/users/${username}/dms`) {
+          if (data.type === 'invite' && data.sender !== username) {
+            setDms(prev => {
+              if (prev.some(d => d.username === data.sender)) return prev;
+              const next = [...prev, { username: data.sender, avatar: data.avatar }];
+              localStorage.setItem('mqtt_chat_dms', JSON.stringify(next));
+              
+              // Subscribe to new DM room topics immediately
+              const dmRoomId = 'dm_' + [username, data.sender].sort().join('_');
+              mqttClient.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}`);
+              mqttClient.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/typing`);
+              mqttClient.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/presence`);
+              mqttClient.subscribe(`mqtt_chat/calls/${dmRoomId}/${username}`);
+              return next;
+            });
+            playNotificationSound();
+          }
+          return;
+        }
+
         // Handle call signaling
         if (topic.includes('/calls/')) {
           if (data.from !== username) {
@@ -466,7 +562,8 @@ export default function App() {
         
         // Handle Typing indicator
         if (topic.endsWith('/typing')) {
-          const roomId = topic.split('/')[2];
+          const parts = topic.split('/');
+          const roomId = parts[1] === 'dms' ? parts[3] : parts[2];
           if (data.username !== username) {
             setTypingUsers(prev => {
               const roomTyping = { ...prev[roomId] };
@@ -483,7 +580,8 @@ export default function App() {
 
         // Handle Presence detection
         if (topic.endsWith('/presence')) {
-          const roomId = topic.split('/')[2];
+          const parts = topic.split('/');
+          const roomId = parts[1] === 'dms' ? parts[3] : parts[2];
           if (data.username !== username) {
             setOnlineUsers(prev => {
               const list = prev[roomId] || [];
@@ -498,7 +596,13 @@ export default function App() {
         }
 
         // Handle Incoming Messages
-        const roomId = topic.split('/')[2];
+        let roomId = null;
+        if (topic.startsWith('mqtt_chat/rooms/')) {
+          roomId = topic.split('/')[2];
+        } else if (topic.startsWith('mqtt_chat/dms/rooms/')) {
+          roomId = topic.split('/')[3];
+        }
+
         if (roomId) {
           const isSenderSelf = data.username === username;
           const formattedMessage = {
@@ -547,7 +651,7 @@ export default function App() {
         mqttClient.end();
       }
     };
-  }, [brokerUrl, rooms.length, username]);
+  }, [brokerUrl, rooms.length, dms.length, username]);
 
   // Periodic Presence Broadcaster
   useEffect(() => {
@@ -591,12 +695,16 @@ export default function App() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [client, connectionStatus, username, avatar, activeRoom]);
+  }, [client, connectionStatus, username, avatar, activeRoom, dms]);
 
   const announcePresence = (mqttClientInstance) => {
     const payload = JSON.stringify({ username, avatar, timestamp: Date.now() });
     rooms.forEach(room => {
       mqttClientInstance.publish(`mqtt_chat/rooms/${room.id}/presence`, payload, { qos: 0 });
+    });
+    dms.forEach(dm => {
+      const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
+      mqttClientInstance.publish(`mqtt_chat/dms/rooms/${dmRoomId}/presence`, payload, { qos: 0 });
     });
   };
 
@@ -619,7 +727,9 @@ export default function App() {
       timestamp: Date.now()
     };
 
-    client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+    const isDm = activeRoom.startsWith('dm_');
+    const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
+    client.publish(topic, JSON.stringify(payload), { qos: 1 });
     setMessageText('');
     handleTypingIndicator(false);
   };
@@ -674,7 +784,9 @@ export default function App() {
           timestamp: Date.now()
         };
 
-        client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+        const isDm = activeRoom.startsWith('dm_');
+        const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
+        client.publish(topic, JSON.stringify(payload), { qos: 1 });
       };
       img.src = event.target.result;
     };
@@ -721,7 +833,9 @@ export default function App() {
           };
 
           if (client && connectionStatus === 'connected') {
-            client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+            const isDm = activeRoom.startsWith('dm_');
+            const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
+            client.publish(topic, JSON.stringify(payload), { qos: 1 });
           }
         };
         reader.readAsDataURL(audioBlob);
@@ -798,8 +912,9 @@ export default function App() {
 
     typingTimeoutRef.current[activeRoom] = isTyping;
 
-    const payload = JSON.stringify({ username, isTyping });
-    client.publish(`mqtt_chat/rooms/${activeRoom}/typing`, payload, { qos: 0 });
+    const isDm = activeRoom.startsWith('dm_');
+    const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}/typing` : `mqtt_chat/rooms/${activeRoom}/typing`;
+    client.publish(topic, payload, { qos: 0 });
   };
 
   const onInputChange = (e) => {
@@ -856,7 +971,11 @@ export default function App() {
   );
 
   // Active room data
-  const currentRoomDetails = rooms.find(r => r.id === activeRoom) || rooms[0];
+  const isDmActive = activeRoom.startsWith('dm_');
+  const dmPartner = isDmActive ? getDmPartner(activeRoom) : null;
+  const currentRoomDetails = isDmActive
+    ? { id: activeRoom, name: dmPartner?.username || 'Chat Pribadi', description: 'Obrolan pribadi secara langsung.' }
+    : (rooms.find(r => r.id === activeRoom) || rooms[0]);
   const activeRoomMessages = messages[activeRoom] || [];
   const activeRoomTyping = Object.keys(typingUsers[activeRoom] || {});
   const activeRoomOnline = onlineUsers[activeRoom] || [];
@@ -869,11 +988,18 @@ export default function App() {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // --- Filtered DMs ---
+  const filteredDms = dms.filter(dm => 
+    dm.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-chat-bg text-gray-200">
       
       {/* 1. LEFT PANEL: Sidebar */}
-      <div className="w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-800 bg-chat-sidebar shrink-0 z-10">
+      <div className={`w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-800 bg-chat-sidebar shrink-0 z-10 ${
+        mobileView === 'list' ? 'flex' : 'hidden md:flex'
+      }`}>
         
         {/* User Profile Info Header */}
         <div className="h-16 px-4 flex items-center justify-between bg-chat-header border-b border-gray-800">
@@ -906,8 +1032,14 @@ export default function App() {
               {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
             </button>
             <button 
-              onClick={() => setShowCreateRoomModal(true)} 
-              title="Buat Room Baru"
+              onClick={() => {
+                if (activeTab === 'rooms') {
+                  setShowCreateRoomModal(true);
+                } else {
+                  setShowStartDmModal(true);
+                }
+              }} 
+              title={activeTab === 'rooms' ? 'Buat Room Baru' : 'Mulai Obrolan Pribadi'}
               className="p-2 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition"
             >
               <Plus size={20} />
@@ -949,13 +1081,33 @@ export default function App() {
           </button>
         </div>
 
+        {/* Tab Switcher */}
+        <div className="flex border-b border-gray-800/60 bg-chat-header/30">
+          <button 
+            onClick={() => setActiveTab('rooms')}
+            className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition ${
+              activeTab === 'rooms' ? 'border-chat-accent text-white' : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Grup Obrolan
+          </button>
+          <button 
+            onClick={() => setActiveTab('dms')}
+            className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition ${
+              activeTab === 'dms' ? 'border-chat-accent text-white' : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Pesan Pribadi
+          </button>
+        </div>
+
         {/* Search Chats */}
         <div className="p-3 bg-chat-sidebar">
           <div className="relative flex items-center bg-chat-active rounded-lg px-3 py-2 text-gray-400 border border-transparent focus-within:border-chat-accent/50 transition">
             <Search size={18} className="mr-3" />
             <input 
               type="text" 
-              placeholder="Cari atau mulai obrolan baru" 
+              placeholder={activeTab === 'rooms' ? 'Cari grup obrolan' : 'Cari kontak pribadi'} 
               className="bg-transparent border-none outline-none w-full text-sm text-gray-200 placeholder-gray-400"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -963,77 +1115,170 @@ export default function App() {
           </div>
         </div>
 
-        {/* Chat Rooms List */}
+        {/* Chat Rooms & DMs List */}
         <div className="flex-1 overflow-y-auto divide-y divide-gray-800/40">
-          {filteredRooms.length > 0 ? (
-            filteredRooms.map(room => {
-              const roomMsgs = messages[room.id] || [];
-              const lastMsg = roomMsgs[roomMsgs.length - 1];
-              const isSelected = activeRoom === room.id;
+          {activeTab === 'rooms' ? (
+            filteredRooms.length > 0 ? (
+              filteredRooms.map(room => {
+                const roomMsgs = messages[room.id] || [];
+                const lastMsg = roomMsgs[roomMsgs.length - 1];
+                const isSelected = activeRoom === room.id;
 
-              return (
-                <button
-                  key={room.id}
-                  onClick={() => {
-                    setActiveRoom(room.id);
-                    // Hide emoji/details on mobile stack changes
-                    setShowEmojiPicker(false);
-                  }}
-                  className={`w-full text-left p-4 flex items-center space-x-3 transition-colors ${
-                    isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'
-                  }`}
-                >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-xl font-bold shrink-0">
-                    {room.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-1">
-                      <span className="font-semibold text-white text-base truncate">{room.name}</span>
-                      {lastMsg && (
-                        <span className="text-[11px] text-gray-400 shrink-0">{formatTime(lastMsg.timestamp)}</span>
+                return (
+                  <button
+                    key={room.id}
+                    onClick={() => {
+                      setActiveRoom(room.id);
+                      setMobileView('chat');
+                      setShowEmojiPicker(false);
+                    }}
+                    className={`w-full text-left p-4 flex items-center space-x-3 transition-colors ${
+                      isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-xl font-bold shrink-0">
+                      {room.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline mb-1">
+                        <span className="font-semibold text-white text-base truncate">{room.name}</span>
+                        {lastMsg && (
+                          <span className="text-[11px] text-gray-400 shrink-0">{formatTime(lastMsg.timestamp)}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400 truncate">
+                        {lastMsg ? (
+                          <>
+                            <span className="text-gray-300 font-medium">{lastMsg.sender === username ? 'Anda' : lastMsg.sender}: </span>
+                            {lastMsg.text}
+                          </>
+                        ) : (
+                          room.description || 'Belum ada obrolan'
+                        )}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 text-center">
+                <MessageSquare size={40} className="text-gray-600 mb-2" />
+                <p className="text-gray-500 text-sm">Tidak ada room yang ditemukan</p>
+              </div>
+            )
+          ) : (
+            filteredDms.length > 0 ? (
+              filteredDms.map(dm => {
+                const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
+                const dmMessages = messages[dmRoomId] || [];
+                const lastMsg = dmMessages[dmMessages.length - 1];
+                const isSelected = activeRoom === dmRoomId;
+                const isOnline = (onlineUsers[dmRoomId] || []).some(u => u.username === dm.username);
+
+                return (
+                  <button
+                    key={dm.username}
+                    onClick={() => {
+                      setActiveRoom(dmRoomId);
+                      setMobileView('chat');
+                      setShowEmojiPicker(false);
+                    }}
+                    className={`w-full text-left p-4 flex items-center space-x-3 transition-colors ${
+                      isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'
+                    }`}
+                  >
+                    <div className="relative shrink-0">
+                      <img 
+                        src={dm.avatar} 
+                        alt={dm.username} 
+                        className="w-12 h-12 rounded-full object-cover border border-gray-800"
+                      />
+                      {isOnline && (
+                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-chat-sidebar"></span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-400 truncate">
-                      {lastMsg ? (
-                        <>
-                          <span className="text-gray-300 font-medium">{lastMsg.sender === username ? 'Anda' : lastMsg.sender}: </span>
-                          {lastMsg.text}
-                        </>
-                      ) : (
-                        room.description || 'Belum ada obrolan'
-                      )}
-                    </p>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline mb-1">
+                        <span className="font-semibold text-white text-base truncate">{dm.username}</span>
+                        {lastMsg && (
+                          <span className="text-[11px] text-gray-400 shrink-0">{formatTime(lastMsg.timestamp)}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400 truncate">
+                        {lastMsg ? (
+                          <>
+                            <span className="text-gray-300 font-medium">{lastMsg.sender === username ? 'Anda' : lastMsg.sender}: </span>
+                            {lastMsg.text}
+                          </>
+                        ) : (
+                          <span className="italic text-gray-500">Mulai chat pribadi...</span>
+                        )}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 text-center">
+                <MessageSquare size={40} className="text-gray-600 mb-2" />
+                <p className="text-gray-500 text-sm">Belum ada obrolan pribadi</p>
+                <button
+                  onClick={() => setShowStartDmModal(true)}
+                  className="mt-3 bg-chat-accent hover:bg-chat-accent/90 text-white text-xs px-3 py-1.5 rounded-lg transition"
+                >
+                  Mulai Obrolan Baru
                 </button>
-              );
-            })
-          ) : (
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-              <MessageSquare size={40} className="text-gray-600 mb-2" />
-              <p className="text-gray-500 text-sm">Tidak ada room yang ditemukan</p>
-            </div>
+              </div>
+            )
           )}
         </div>
       </div>
 
       {/* 2. MIDDLE PANEL: Active Chat Window */}
-      <div className="flex-1 h-full flex flex-col relative bg-[#0b141a]">
+      <div className={`flex-1 h-full flex flex-col relative bg-[#0b141a] ${
+        mobileView === 'chat' ? 'flex' : 'hidden md:flex'
+      }`}>
         
         {/* Background Wallpaper Pattern */}
         <div className="chat-wallpaper"></div>
 
         {/* Chat Window Header */}
         <div className="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between z-10">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-lg font-bold shrink-0">
-              {currentRoomDetails.name.charAt(0)}
-            </div>
-            <div>
-              <h3 className="font-semibold text-white text-sm md:text-base leading-tight">
+          <div className="flex items-center space-x-3 cursor-pointer overflow-hidden" onClick={() => setShowDetails(!showDetails)}>
+            {/* Back button on mobile */}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setMobileView('list');
+              }}
+              className="md:hidden p-1.5 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition shrink-0"
+            >
+              <ArrowLeft size={20} />
+            </button>
+
+            {isDmActive ? (
+              <img 
+                src={dmPartner?.avatar || AVATARS[0]} 
+                alt={dmPartner?.username} 
+                className="w-10 h-10 rounded-full object-cover border border-gray-800 shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-lg font-bold shrink-0">
+                {currentRoomDetails.name.charAt(0)}
+              </div>
+            )}
+            <div className="truncate">
+              <h3 className="font-semibold text-white text-sm md:text-base leading-tight truncate">
                 {currentRoomDetails.name}
               </h3>
-              <p className="text-xs text-gray-400 truncate max-w-[200px] md:max-w-xs">
-                {activeRoomOnline.length > 0 ? (
+              <p className="text-xs text-gray-400 truncate max-w-[150px] md:max-w-xs">
+                {isDmActive ? (
+                  activeRoomOnline.some(u => u.username === dmPartner?.username) ? (
+                    <span className="text-emerald-400 font-medium">Online</span>
+                  ) : (
+                    <span>Offline</span>
+                  )
+                ) : activeRoomOnline.length > 0 ? (
                   <span className="text-emerald-400 font-medium">
                     {activeRoomOnline.length + 1} online ({username}, {activeRoomOnline.map(u => u.username).join(', ')})
                   </span>
@@ -1280,11 +1525,11 @@ export default function App() {
         </div>
       </div>
 
-      {/* 3. RIGHT PANEL: Room Details Info */}
+      {/* 3. RIGHT PANEL: Room/Contact Details Info */}
       {showDetails && (
-        <div className="w-[320px] h-full border-l border-gray-800 bg-chat-sidebar flex flex-col shrink-0 z-10 animate-slideup">
+        <div className="w-full md:w-[320px] h-full border-l border-gray-800 bg-chat-sidebar flex flex-col shrink-0 z-20 absolute md:relative inset-y-0 right-0 md:inset-auto animate-slideup">
           <div className="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white">
-            <span className="font-semibold text-sm">Informasi Grup</span>
+            <span className="font-semibold text-sm">{isDmActive ? 'Informasi Kontak' : 'Informasi Grup'}</span>
             <button 
               onClick={() => setShowDetails(false)}
               className="p-1 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition"
@@ -1294,13 +1539,21 @@ export default function App() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {/* Info Group Banner */}
+            {/* Info Banner */}
             <div className="flex flex-col items-center text-center pb-4 border-b border-gray-800/40">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-3xl font-bold mb-3 shadow">
-                {currentRoomDetails.name.charAt(0)}
-              </div>
+              {isDmActive ? (
+                <img 
+                  src={dmPartner?.avatar || AVATARS[0]} 
+                  alt={dmPartner?.username} 
+                  className="w-20 h-20 rounded-full object-cover border border-gray-800 mb-3 shadow"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-3xl font-bold mb-3 shadow">
+                  {currentRoomDetails.name.charAt(0)}
+                </div>
+              )}
               <h4 className="font-semibold text-lg text-white">{currentRoomDetails.name}</h4>
-              <p className="text-xs text-gray-400 mt-1">Topic: <code className="bg-chat-active px-1 py-0.5 rounded text-teal-400 text-[10px]">mqtt_chat/rooms/{activeRoom}</code></p>
+              <p className="text-xs text-gray-400 mt-1">Topic: <code className="bg-chat-active px-1 py-0.5 rounded text-teal-400 text-[10px]">{isDmActive ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`}</code></p>
             </div>
 
             {/* Description */}
@@ -1311,22 +1564,50 @@ export default function App() {
               </p>
             </div>
 
-            {/* Online Members */}
-            <div>
-              <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Anggota Aktif ({activeRoomOnline.length + 1})</h5>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2.5 p-1">
-                  <img src={avatar} className="w-8 h-8 rounded-full object-cover" alt="Me" />
-                  <span className="text-sm text-white font-medium">{username} <span className="text-[10px] text-emerald-400 bg-emerald-950/40 px-1 py-0.2 rounded ml-1">Anda</span></span>
-                </div>
-                {activeRoomOnline.map(member => (
-                  <div key={member.username} className="flex items-center space-x-2.5 p-1 animate-slideup">
-                    <img src={member.avatar} className="w-8 h-8 rounded-full object-cover" alt={member.username} />
-                    <span className="text-sm text-gray-300 font-medium">{member.username}</span>
+            {/* Online Members (Only for Groups) */}
+            {!isDmActive && (
+              <div>
+                <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Anggota Aktif ({activeRoomOnline.length + 1})</h5>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2.5 p-1">
+                    <img src={avatar} className="w-8 h-8 rounded-full object-cover" alt="Me" />
+                    <span className="text-sm text-white font-medium">{username} <span className="text-[10px] text-emerald-400 bg-emerald-950/40 px-1 py-0.2 rounded ml-1">Anda</span></span>
                   </div>
-                ))}
+                  {activeRoomOnline.map(member => (
+                    <div key={member.username} className="flex items-center justify-between p-1 animate-slideup">
+                      <div className="flex items-center space-x-2.5">
+                        <img src={member.avatar} className="w-8 h-8 rounded-full object-cover" alt={member.username} />
+                        <span className="text-sm text-gray-300 font-medium">{member.username}</span>
+                      </div>
+                      {member.username !== username && (
+                        <button
+                          onClick={() => startDmWithUser(member.username, member.avatar)}
+                          className="p-1.5 hover:bg-chat-active rounded-full text-chat-accent transition"
+                          title={`Kirim pesan ke ${member.username}`}
+                        >
+                          <MessageSquare size={16} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* DM Online Status (Only for DMs) */}
+            {isDmActive && (
+              <div>
+                <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Status Koneksi</h5>
+                <div className="flex items-center space-x-2 p-3 bg-chat-active/30 rounded border border-gray-800/20">
+                  <span className={`w-2.5 h-2.5 rounded-full ${
+                    activeRoomOnline.some(u => u.username === dmPartner?.username) ? 'bg-emerald-500 animate-pulse' : 'bg-gray-600'
+                  }`}></span>
+                  <span className="text-sm text-gray-300 font-medium">
+                    {activeRoomOnline.some(u => u.username === dmPartner?.username) ? 'Online' : 'Offline / Terputus'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Shared Images Gallery */}
             <div>
@@ -1510,7 +1791,63 @@ export default function App() {
         </div>
       )}
 
-      {/* WebRTC Video & Audio Calling Overlay */}
+      {/* START DM MODAL */}
+      {showStartDmModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newDmUsername.trim()) {
+                startDmWithUser(newDmUsername.trim(), AVATARS[Math.floor(Math.random() * AVATARS.length)]);
+                setNewDmUsername('');
+                setShowStartDmModal(false);
+              }
+            }} 
+            className="w-full max-w-md bg-chat-sidebar rounded-xl border border-gray-800 shadow-2xl overflow-hidden animate-slideup"
+          >
+            <div className="px-6 py-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white">
+              <span className="font-semibold text-base flex items-center"><MessageSquare className="mr-2 text-chat-accent" size={18} /> Mulai Chat Pribadi</span>
+              <button 
+                type="button"
+                onClick={() => setShowStartDmModal(false)}
+                className="p-1 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Username Teman</label>
+                <input 
+                  type="text" 
+                  value={newDmUsername}
+                  onChange={(e) => setNewDmUsername(e.target.value)}
+                  placeholder="Ketik username teman Anda..."
+                  required
+                  className="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-1 focus:ring-chat-accent"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-3 bg-chat-header border-t border-gray-800 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowStartDmModal(false)}
+                className="text-gray-400 hover:text-white px-4 py-1.5 rounded-lg text-sm transition"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="bg-chat-accent text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:scale-105 active:scale-95 transition"
+              >
+                Mulai Chat
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
       {callState !== 'idle' && (
         <div className="fixed inset-0 bg-gray-950/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
           <div className="w-full max-w-4xl flex flex-col h-full items-center justify-between py-8">
