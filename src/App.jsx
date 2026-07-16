@@ -730,6 +730,18 @@ export default function App() {
     const isDm = activeRoom.startsWith('dm_');
     const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
     client.publish(topic, JSON.stringify(payload), { qos: 1 });
+
+    if (isDm) {
+      const partner = getDmPartner(activeRoom);
+      if (partner) {
+        client.publish(`mqtt_chat/users/${partner.username}/dms`, JSON.stringify({
+          type: 'invite',
+          sender: username,
+          avatar: avatar
+        }), { qos: 1 });
+      }
+    }
+
     setMessageText('');
     handleTypingIndicator(false);
   };
@@ -787,6 +799,17 @@ export default function App() {
         const isDm = activeRoom.startsWith('dm_');
         const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
         client.publish(topic, JSON.stringify(payload), { qos: 1 });
+
+        if (isDm) {
+          const partner = getDmPartner(activeRoom);
+          if (partner) {
+            client.publish(`mqtt_chat/users/${partner.username}/dms`, JSON.stringify({
+              type: 'invite',
+              sender: username,
+              avatar: avatar
+            }), { qos: 1 });
+          }
+        }
       };
       img.src = event.target.result;
     };
@@ -836,6 +859,17 @@ export default function App() {
             const isDm = activeRoom.startsWith('dm_');
             const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
             client.publish(topic, JSON.stringify(payload), { qos: 1 });
+
+            if (isDm) {
+              const partner = getDmPartner(activeRoom);
+              if (partner) {
+                client.publish(`mqtt_chat/users/${partner.username}/dms`, JSON.stringify({
+                  type: 'invite',
+                  sender: username,
+                  avatar: avatar
+                }), { qos: 1 });
+              }
+            }
           }
         };
         reader.readAsDataURL(audioBlob);
@@ -914,6 +948,7 @@ export default function App() {
 
     const isDm = activeRoom.startsWith('dm_');
     const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}/typing` : `mqtt_chat/rooms/${activeRoom}/typing`;
+    const payload = JSON.stringify({ username, isTyping });
     client.publish(topic, payload, { qos: 0 });
   };
 
