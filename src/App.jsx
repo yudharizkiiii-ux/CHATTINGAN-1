@@ -46,6 +46,7 @@ const AVATARS = [
 ];
 
 const DEFAULT_BROKERS = [
+  { name: 'Local Network Broker (Offline)', url: `ws://${window.location.hostname}:9001` },
   { name: 'HiveMQ Public Broker', url: 'wss://broker.hivemq.com:8884/mqtt' },
   { name: 'EMQX Public Broker', url: 'wss://broker.emqx.io:8083/mqtt' },
   { name: 'Mosquitto Public Broker', url: 'wss://test.mosquitto.org:8081/mqtt' }

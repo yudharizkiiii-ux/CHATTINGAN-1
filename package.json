@@ -6,15 +6,18 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "broker": "node broker.js",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
+    "aedes": "^1.1.1",
     "canvas-confetti": "^1.9.3",
     "lucide-react": "^0.359.0",
     "mqtt": "^5.5.5",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "websocket-stream": "^5.5.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
