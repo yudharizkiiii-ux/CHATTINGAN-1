@@ -124,6 +124,7 @@ export default function App() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
+  const recordingTimeRef = useRef(0);
   const audioPlayerRef = useRef(null);
 
   // --- WebRTC States & Refs ---
@@ -413,6 +414,13 @@ export default function App() {
     if (localStream.current) {
       localStream.current.getTracks().forEach(track => track.stop());
       localStream.current = null;
+    }
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
     }
 
     if (peerConnection.current) {
@@ -854,6 +862,7 @@ export default function App() {
       img.src = event.target.result;
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // --- Real Audio Recorder Actions ---
@@ -872,7 +881,7 @@ export default function App() {
 
       mediaRecorder.onstop = () => {
         // Collect duration from time state since onstop is called synchronously after stopRecording()
-        const duration = recordingTime;
+        const duration = recordingTimeRef.current;
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
         // Stop all audio tracks to release microphone
@@ -918,14 +927,16 @@ export default function App() {
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
+      recordingTimeRef.current = 0;
 
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
-          if (prev >= 20) { // Limit max recording to 20 seconds
+          const next = prev + 1;
+          recordingTimeRef.current = next;
+          if (next >= 20) { // Limit max recording to 20 seconds
             stopRecording();
-            return prev;
           }
-          return prev + 1;
+          return next;
         });
       }, 1000);
     } catch (err) {
@@ -2177,58 +2188,79 @@ export default function App() {
           </div>
 
           {/* 3. Bottom controls capsule bar exactly like screenshot */}
-          <div className="w-full max-w-sm bg-[#1e272d]/95 backdrop-blur-md rounded-full px-6 py-4 flex items-center justify-between shadow-2xl border border-white/5 z-10 mb-4">
-            {/* More Options */}
-            <button 
-              onClick={() => alert('Opsi Panggilan Tambahan')}
-              className="text-gray-400 hover:text-white p-2 transition active:scale-95"
-              title="Opsi Lainnya"
-            >
-              <MoreHorizontal size={22} />
-            </button>
+          {callState === 'ringing' ? (
+            <div className="w-full max-w-sm bg-[#1e272d]/95 backdrop-blur-md rounded-full px-8 py-4 flex items-center justify-center space-x-12 shadow-2xl border border-white/5 z-10 mb-4">
+              {/* Decline (Red) */}
+              <button 
+                onClick={() => endCall(true)}
+                className="w-14 h-14 rounded-full bg-[#ea0038] hover:bg-[#d00030] text-white flex items-center justify-center shadow-lg transition transform active:scale-90 hover:scale-105"
+                title="Tolak Panggilan"
+              >
+                <PhoneOff size={24} />
+              </button>
+              {/* Accept (Green) */}
+              <button 
+                onClick={acceptCall}
+                className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-lg transition transform active:scale-90 hover:scale-105 animate-bounce"
+                title="Terima Panggilan"
+              >
+                <Phone size={24} />
+              </button>
+            </div>
+          ) : (
+            <div className="w-full max-w-sm bg-[#1e272d]/95 backdrop-blur-md rounded-full px-6 py-4 flex items-center justify-between shadow-2xl border border-white/5 z-10 mb-4">
+              {/* More Options */}
+              <button 
+                onClick={() => alert('Opsi Panggilan Tambahan')}
+                className="text-gray-400 hover:text-white p-2 transition active:scale-95"
+                title="Opsi Lainnya"
+              >
+                <MoreHorizontal size={22} />
+              </button>
 
-            {/* Video Camera Toggle */}
-            <button 
-              onClick={toggleVideoMute}
-              className={`p-2.5 rounded-full transition active:scale-95 ${
-                isVideoMuted ? 'text-rose-500 hover:bg-rose-500/10' : 'text-gray-300 hover:bg-white/10'
-              }`}
-              title={isVideoMuted ? "Aktifkan Kamera" : "Matikan Kamera"}
-            >
-              {isVideoMuted ? <VideoOff size={22} /> : <Video size={22} />}
-            </button>
+              {/* Video Camera Toggle */}
+              <button 
+                onClick={toggleVideoMute}
+                className={`p-2.5 rounded-full transition active:scale-95 ${
+                  isVideoMuted ? 'text-rose-500 hover:bg-rose-500/10' : 'text-gray-300 hover:bg-white/10'
+                }`}
+                title={isVideoMuted ? "Aktifkan Kamera" : "Matikan Kamera"}
+              >
+                {isVideoMuted ? <VideoOff size={22} /> : <Video size={22} />}
+              </button>
 
-            {/* Loudspeaker Volume Toggle */}
-            <button 
-              onClick={toggleLoudspeaker}
-              className={`p-2.5 rounded-full transition active:scale-95 ${
-                isLoudspeakerOn ? 'text-[#25d366] hover:bg-emerald-500/10' : 'text-gray-300 hover:bg-white/10'
-              }`}
-              title={isLoudspeakerOn ? "Matikan Loudspeaker" : "Aktifkan Loudspeaker"}
-            >
-              {isLoudspeakerOn ? <Volume2 size={22} /> : <Volume1 size={22} />}
-            </button>
+              {/* Loudspeaker Volume Toggle */}
+              <button 
+                onClick={toggleLoudspeaker}
+                className={`p-2.5 rounded-full transition active:scale-95 ${
+                  isLoudspeakerOn ? 'text-[#25d366] hover:bg-emerald-500/10' : 'text-gray-300 hover:bg-white/10'
+                }`}
+                title={isLoudspeakerOn ? "Matikan Loudspeaker" : "Aktifkan Loudspeaker"}
+              >
+                {isLoudspeakerOn ? <Volume2 size={22} /> : <Volume1 size={22} />}
+              </button>
 
-            {/* Mode Hening (Mute Mic) */}
-            <button 
-              onClick={toggleAudioMute}
-              className={`p-2.5 rounded-full transition active:scale-95 ${
-                isAudioMuted ? 'text-rose-500 hover:bg-rose-500/10' : 'text-gray-300 hover:bg-white/10'
-              }`}
-              title={isAudioMuted ? "Aktifkan Suara" : "Mode Hening"}
-            >
-              {isAudioMuted ? <MicOff size={22} /> : <Mic size={22} />}
-            </button>
+              {/* Mode Hening (Mute Mic) */}
+              <button 
+                onClick={toggleAudioMute}
+                className={`p-2.5 rounded-full transition active:scale-95 ${
+                  isAudioMuted ? 'text-rose-500 hover:bg-rose-500/10' : 'text-gray-300 hover:bg-white/10'
+                }`}
+                title={isAudioMuted ? "Aktifkan Suara" : "Mode Hening"}
+              >
+                {isAudioMuted ? <MicOff size={22} /> : <Mic size={22} />}
+              </button>
 
-            {/* Red Hangup Call button */}
-            <button 
-              onClick={() => endCall(true)}
-              className="w-12 h-12 rounded-full bg-[#ea0038] hover:bg-[#d00030] text-white flex items-center justify-center shadow-lg transition transform active:scale-90 hover:scale-105"
-              title="Akhiri Panggilan"
-            >
-              <PhoneOff size={20} />
-            </button>
-          </div>
+              {/* Red Hangup Call button */}
+              <button 
+                onClick={() => endCall(true)}
+                className="w-12 h-12 rounded-full bg-[#ea0038] hover:bg-[#d00030] text-white flex items-center justify-center shadow-lg transition transform active:scale-90 hover:scale-105"
+                title="Akhiri Panggilan"
+              >
+                <PhoneOff size={20} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

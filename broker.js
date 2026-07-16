@@ -1,9 +1,9 @@
-import aedes from 'aedes';
+import { Aedes } from 'aedes';
 import { createServer } from 'net';
 import { createServer as createHttpServer } from 'http';
 import ws from 'websocket-stream';
 
-const aedesBroker = aedes();
+const aedesBroker = await Aedes.createBroker();
 const server = createServer(aedesBroker.handle);
 const httpServer = createHttpServer();
 

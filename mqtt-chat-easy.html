@@ -498,6 +498,11 @@
         localStream = null;
       }
 
+      const localVideo = document.getElementById('local-video');
+      const remoteVideo = document.getElementById('remote-video');
+      if (localVideo) localVideo.srcObject = null;
+      if (remoteVideo) remoteVideo.srcObject = null;
+
       if (peerConnection) {
         try { peerConnection.close(); } catch(e) {}
         peerConnection = null;
@@ -1096,6 +1101,7 @@
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     }
 
     // --- Real Voice Note Actions ---
