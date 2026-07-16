@@ -1122,26 +1122,26 @@ export default function App() {
     <div className="flex h-screen w-screen overflow-hidden bg-chat-bg text-gray-200">
       
       {/* 1. LEFT PANEL: Sidebar */}
-      <div className={`w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-200 bg-white shrink-0 z-10 text-gray-900 ${
+      <div className={`w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-800 bg-chat-sidebar shrink-0 z-10 text-gray-300 ${
         mobileView === 'list' ? 'flex' : 'hidden md:flex'
       }`}>
         
         {/* User Profile Info Header */}
-        <div className="h-16 px-4 flex items-center justify-between bg-white border-b border-gray-100">
+        <div className="h-16 px-4 flex items-center justify-between bg-chat-header border-b border-gray-800">
           {/* Left: Options menu */}
           <button 
             onClick={() => setActiveTab('you')}
-            className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition"
+            className="w-10 h-10 rounded-full bg-chat-active hover:bg-chat-active/80 flex items-center justify-center text-gray-300 transition"
             title="Pengaturan"
           >
-            <span className="font-bold text-lg">...</span>
+            <span className="font-bold text-lg text-white">...</span>
           </button>
 
           {/* Right: Actions */}
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => alert('Fitur Kamera Jaringan Lokal')}
-              className="p-2 hover:bg-gray-100 rounded-full text-gray-700 transition"
+              className="p-2 hover:bg-chat-active rounded-full text-gray-300 transition"
               title="Kamera"
             >
               <Camera size={22} />
@@ -1150,7 +1150,7 @@ export default function App() {
               onClick={() => {
                 setShowStartDmModal(true);
               }} 
-              className="w-9 h-9 bg-[#25d366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow transition transform active:scale-95"
+              className="w-9 h-9 bg-chat-accent hover:bg-chat-accent/90 text-white rounded-full flex items-center justify-center shadow transition transform active:scale-95"
               title="Chat Baru / Grup Baru"
             >
               <Plus size={20} />
@@ -1162,18 +1162,18 @@ export default function App() {
         {activeTab === 'chat' && (
           <>
             {/* Title */}
-            <div className="px-4 py-2">
-              <h1 className="text-3xl font-bold text-black tracking-tight">Chat</h1>
+            <div className="px-4 py-2 bg-chat-sidebar">
+              <h1 className="text-3xl font-bold text-white tracking-tight">Chat</h1>
             </div>
 
             {/* Search Chats */}
-            <div className="px-4 py-2 bg-white">
-              <div className="relative flex items-center bg-[#f0f2f5] rounded-full px-4 py-2 text-gray-500 transition focus-within:bg-gray-200/80">
+            <div className="px-4 py-2 bg-chat-sidebar">
+              <div className="relative flex items-center bg-chat-active rounded-lg px-4 py-2 text-gray-400 transition focus-within:bg-chat-active/80">
                 <Search size={18} className="mr-3 text-gray-400" />
                 <input 
                   type="text" 
-                  placeholder="Tanya Meta AI atau cari" 
-                  className="bg-transparent border-none outline-none w-full text-sm text-gray-850 placeholder-gray-500"
+                  placeholder="Cari atau mulai chat baru" 
+                  className="bg-transparent border-none outline-none w-full text-sm text-gray-200 placeholder-gray-500"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -1181,16 +1181,16 @@ export default function App() {
             </div>
 
             {/* Archived Section Row */}
-            <div className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer border-b border-gray-100/50">
+            <div className="px-4 py-3 flex items-center justify-between hover:bg-chat-active/50 cursor-pointer border-b border-gray-800/40">
               <div className="flex items-center space-x-4">
-                <Archive size={20} className="text-gray-500" />
-                <span className="text-sm font-semibold text-gray-800">Diarsipkan</span>
+                <Archive size={20} className="text-gray-400" />
+                <span className="text-sm font-semibold text-gray-300">Diarsipkan</span>
               </div>
-              <span className="text-xs text-[#25d366] font-bold">2</span>
+              <span className="text-xs text-chat-accent font-bold">2</span>
             </div>
 
             {/* Unified Chats List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-800/40 bg-chat-sidebar">
               {getUnifiedChats().length > 0 ? (
                 getUnifiedChats().map(chat => {
                   const isSelected = activeRoom === chat.id;
@@ -1205,31 +1205,31 @@ export default function App() {
                         setShowEmojiPicker(false);
                       }}
                       className={`w-full text-left p-4 flex items-center space-x-3 transition-colors ${
-                        isSelected ? 'bg-gray-100' : 'hover:bg-gray-50'
+                        isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/55'
                       }`}
                     >
                       {/* Avatar */}
                       <div className="relative shrink-0">
                         {chat.isGroup ? (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-600 text-xl font-bold shrink-0">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-xl font-bold shrink-0">
                             {chat.name.charAt(0)}
                           </div>
                         ) : (
                           <img 
                             src={chat.avatar || AVATARS[0]} 
                             alt={chat.name} 
-                            className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                            className="w-12 h-12 rounded-full object-cover border border-gray-800"
                           />
                         )}
                         {isOnline && (
-                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white"></span>
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-chat-sidebar"></span>
                         )}
                       </div>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-1">
-                          <span className="font-bold text-gray-900 text-base truncate">{chat.name}</span>
+                          <span className="font-bold text-white text-base truncate">{chat.name}</span>
                           {chat.lastMsg ? (
                             <span className="text-[11px] text-gray-400 shrink-0 font-medium">{formatTime(chat.lastMsg.timestamp)}</span>
                           ) : (
@@ -1237,7 +1237,7 @@ export default function App() {
                           )}
                         </div>
                         <div className="flex justify-between items-center">
-                          <p className="text-sm text-gray-500 truncate flex-1 pr-2">
+                          <p className="text-sm text-gray-400 truncate flex-1 pr-2">
                             {chat.lastMsg ? (
                               <span className="flex items-center space-x-1">
                                 {chat.lastMsg.sender === username && (
@@ -1246,7 +1246,7 @@ export default function App() {
                                 <span className="truncate">{chat.lastMsg.text}</span>
                               </span>
                             ) : (
-                              <span className="italic text-gray-400">{chat.description || 'Mulai obrolan...'}</span>
+                              <span className="italic text-gray-500">{chat.description || 'Mulai obrolan...'}</span>
                             )}
                           </p>
                           {/* Unread mock/active indicator */}
@@ -1270,26 +1270,26 @@ export default function App() {
 
         {/* Tab 2: Updates (Pembaruan) */}
         {activeTab === 'updates' && (
-          <div className="flex-1 flex flex-col p-4">
-            <h1 className="text-3xl font-bold text-black tracking-tight mb-4">Pembaruan</h1>
+          <div className="flex-1 flex flex-col p-4 bg-chat-sidebar">
+            <h1 className="text-3xl font-bold text-white tracking-tight mb-4">Pembaruan</h1>
             <div className="flex items-center space-x-3 mb-6 p-2">
               <div className="relative">
-                <img src={avatar} className="w-14 h-14 rounded-full border-2 border-gray-200 object-cover" />
-                <span className="absolute bottom-0 right-0 w-5 h-5 bg-[#25d366] rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold">+</span>
+                <img src={avatar} className="w-14 h-14 rounded-full border-2 border-gray-800 object-cover" />
+                <span className="absolute bottom-0 right-0 w-5 h-5 bg-chat-accent rounded-full border-2 border-chat-sidebar flex items-center justify-center text-white text-xs font-bold">+</span>
               </div>
               <div>
-                <h4 className="font-bold text-gray-900 text-sm">Status Saya</h4>
-                <p className="text-xs text-gray-500">Ketuk untuk menambahkan pembaruan status</p>
+                <h4 className="font-bold text-white text-sm">Status Saya</h4>
+                <p className="text-xs text-gray-400">Ketuk untuk menambahkan pembaruan status</p>
               </div>
             </div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pembaruan terkini</h5>
+            <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Pembaruan terkini</h5>
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full border-2 border-emerald-500 p-0.5">
+                <div className="w-12 h-12 rounded-full border-2 border-chat-accent p-0.5">
                   <img src={AVATARS[1]} className="w-full h-full rounded-full object-cover" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-950 text-sm">serda Desta</h4>
+                  <h4 className="font-bold text-white text-sm">serda Desta</h4>
                   <p className="text-xs text-gray-400">Baru saja</p>
                 </div>
               </div>
@@ -1299,30 +1299,30 @@ export default function App() {
 
         {/* Tab 3: Calls (Panggilan) */}
         {activeTab === 'calls' && (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col bg-chat-sidebar">
             <div className="p-4">
-              <h1 className="text-3xl font-bold text-black tracking-tight">Panggilan</h1>
+              <h1 className="text-3xl font-bold text-white tracking-tight">Panggilan</h1>
             </div>
             <div className="flex-1 overflow-y-auto px-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <img src={AVATARS[2]} className="w-12 h-12 rounded-full object-cover" />
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm">serda Desta</h4>
-                    <p className="text-xs text-red-500 flex items-center">✓ Telepon video • 09.55</p>
+                    <h4 className="font-bold text-white text-sm">serda Desta</h4>
+                    <p className="text-xs text-red-400 flex items-center">✓ Telepon video • 09.55</p>
                   </div>
                 </div>
-                <Video size={20} className="text-emerald-500 cursor-pointer" onClick={() => startCall('video', 'serda Desta', AVATARS[2])} />
+                <Video size={20} className="text-chat-accent cursor-pointer" onClick={() => startCall('video', 'serda Desta', AVATARS[2])} />
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <img src={AVATARS[3]} className="w-12 h-12 rounded-full object-cover" />
                   <div>
-                    <h4 className="font-bold text-gray-950 text-sm">Pratu Dani</h4>
-                    <p className="text-xs text-emerald-500 flex items-center">✓ Telepon video • 08.48</p>
+                    <h4 className="font-bold text-white text-sm">Pratu Dani</h4>
+                    <p className="text-xs text-chat-accent flex items-center">✓ Telepon video • 08.48</p>
                   </div>
                 </div>
-                <Video size={20} className="text-emerald-500 cursor-pointer" onClick={() => startCall('video', 'Pratu Dani', AVATARS[3])} />
+                <Video size={20} className="text-chat-accent cursor-pointer" onClick={() => startCall('video', 'Pratu Dani', AVATARS[3])} />
               </div>
             </div>
           </div>
@@ -1330,10 +1330,10 @@ export default function App() {
 
         {/* Tab 4: Communities (Komunitas) */}
         {activeTab === 'communities' && (
-          <div className="flex-1 flex flex-col p-6 items-center justify-center text-center">
-            <Users size={64} className="text-emerald-500 mb-4" />
-            <h2 className="text-xl font-bold text-black mb-2">Perkenalkan Komunitas</h2>
-            <p className="text-sm text-gray-500 max-w-xs">
+          <div className="flex-1 flex flex-col p-6 items-center justify-center text-center bg-chat-sidebar">
+            <Users size={64} className="text-chat-accent mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Perkenalkan Komunitas</h2>
+            <p className="text-sm text-gray-400 max-w-xs">
               Hubungkan grup-grup obrolan yang berkaitan dan kelola dalam satu tempat dengan mudah.
             </p>
           </div>
@@ -1341,36 +1341,36 @@ export default function App() {
 
         {/* Tab 5: You (Anda) / Native Settings */}
         {activeTab === 'you' && (
-          <div className="flex-1 flex flex-col p-4 bg-gray-50 overflow-y-auto">
-            <h1 className="text-3xl font-bold text-black tracking-tight mb-4">Anda</h1>
+          <div className="flex-1 flex flex-col p-4 bg-chat-sidebar overflow-y-auto">
+            <h1 className="text-3xl font-bold text-white tracking-tight mb-4">Anda</h1>
             
             {/* Profile summary card */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center space-x-4 mb-6">
+            <div className="bg-chat-active rounded-xl p-4 shadow-sm border border-gray-800 flex items-center space-x-4 mb-6">
               <div className="relative">
-                <img src={avatar} className="w-16 h-16 rounded-full object-cover border border-gray-200" />
-                <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></span>
+                <img src={avatar} className="w-16 h-16 rounded-full object-cover border border-gray-800" />
+                <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-chat-active"></span>
               </div>
               <div className="flex-1">
                 <input 
                   type="text" 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="font-bold text-lg text-black bg-transparent border-b border-transparent hover:border-gray-300 focus:border-emerald-500 outline-none w-full"
+                  className="font-bold text-lg text-white bg-transparent border-b border-transparent hover:border-gray-700 focus:border-chat-accent outline-none w-full"
                 />
-                <p className="text-xs text-gray-500 mt-0.5">Ketuk untuk ubah nama panggilan</p>
+                <p className="text-xs text-gray-400 mt-0.5">Ketuk untuk ubah nama panggilan</p>
               </div>
             </div>
 
             {/* Avatar picker */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-              <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Ubah Foto Profil</h5>
+            <div className="bg-chat-active rounded-xl p-4 shadow-sm border border-gray-800 mb-6">
+              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Ubah Foto Profil</h5>
               <div className="flex gap-2.5 flex-wrap">
                 {AVATARS.map((av, index) => (
                   <button
                     key={index}
                     onClick={() => setAvatar(av)}
                     className={`w-11 h-11 rounded-full overflow-hidden border-2 transition ${
-                      avatar === av ? 'border-emerald-500 scale-105 shadow' : 'border-transparent hover:border-gray-200'
+                      avatar === av ? 'border-chat-accent scale-105 shadow' : 'border-transparent hover:border-gray-750'
                     }`}
                   >
                     <img src={av} className="w-full h-full object-cover" />
@@ -1380,13 +1380,13 @@ export default function App() {
             </div>
 
             {/* MQTT Server Setup */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-              <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Server Broker MQTT</h5>
+            <div className="bg-chat-active rounded-xl p-4 shadow-sm border border-gray-800 mb-6">
+              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Server Broker MQTT</h5>
               <input 
                 type="text" 
                 value={brokerUrl}
                 onChange={(e) => setBrokerUrl(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 outline-none text-gray-800 text-xs py-2 px-3 rounded-lg focus:ring-1 focus:ring-emerald-500 font-mono"
+                className="w-full bg-chat-sidebar border border-gray-800 outline-none text-white text-xs py-2 px-3 rounded-lg focus:ring-1 focus:ring-chat-accent font-mono"
               />
               <div className="flex gap-2 flex-wrap mt-2">
                 {DEFAULT_BROKERS.map(broker => (
@@ -1395,8 +1395,8 @@ export default function App() {
                     onClick={() => setBrokerUrl(broker.url)}
                     className={`text-[10px] px-2 py-1 rounded transition border ${
                       brokerUrl === broker.url 
-                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700' 
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-chat-accent/20 border-chat-accent text-white' 
+                        : 'bg-chat-sidebar border-gray-800 text-gray-400 hover:text-white'
                     }`}
                   >
                     {broker.name}
@@ -1407,79 +1407,79 @@ export default function App() {
 
             {/* Connection Banner */}
             <div className={`p-4 rounded-xl text-xs flex items-center justify-between border ${
-              connectionStatus === 'connected' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
-              connectionStatus === 'connecting' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-              'bg-red-50 border-red-200 text-red-700'
+              connectionStatus === 'connected' ? 'bg-emerald-950/40 border-emerald-900/40 text-emerald-400' :
+              connectionStatus === 'connecting' ? 'bg-amber-950/40 border-amber-900/40 text-amber-400' :
+              'bg-rose-950/40 border-rose-900/40 text-rose-400'
             }`}>
               <div className="flex items-center space-x-2">
                 <span className={`w-2 h-2 rounded-full ${
                   connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' :
                   connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' :
-                  'bg-red-500'
+                  'bg-rose-500'
                 }`}></span>
                 <span className="font-semibold">
                   {connectionStatus === 'connected' ? 'Broker Terkoneksi' :
                    connectionStatus === 'connecting' ? 'Menghubungkan...' : 'Koneksi Terputus'}
                 </span>
               </div>
-              <button onClick={() => setMessages({})} className="text-red-500 font-bold hover:underline">Hapus Chat</button>
+              <button onClick={() => setMessages({})} className="text-rose-400 font-bold hover:underline">Hapus Chat</button>
             </div>
           </div>
         )}
 
         {/* BOTTOM NAVIGATION BAR */}
-        <div className="h-16 border-t border-gray-200 bg-white flex items-center justify-around shrink-0 text-gray-500 select-none z-10">
+        <div className="h-16 border-t border-gray-800 bg-chat-header flex items-center justify-around shrink-0 text-gray-400 select-none z-10">
           <button 
             onClick={() => setActiveTab('updates')} 
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition ${
-              activeTab === 'updates' ? 'text-black' : 'hover:text-black'
+              activeTab === 'updates' ? 'text-white' : 'hover:text-white'
             }`}
           >
-            <CircleDot size={20} className={activeTab === 'updates' ? 'text-emerald-600' : ''} />
+            <CircleDot size={20} className={activeTab === 'updates' ? 'text-chat-accent' : ''} />
             <span className="mt-1">Pembaruan</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('calls')} 
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition relative ${
-              activeTab === 'calls' ? 'text-black' : 'hover:text-black'
+              activeTab === 'calls' ? 'text-white' : 'hover:text-white'
             }`}
           >
-            <Phone size={20} className={activeTab === 'calls' ? 'text-emerald-600' : ''} />
+            <Phone size={20} className={activeTab === 'calls' ? 'text-chat-accent' : ''} />
             <span className="mt-1">Panggilan</span>
-            <span className="absolute top-1.5 right-4 w-5 h-5 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center">32</span>
+            <span className="absolute top-1.5 right-4 w-5 h-5 rounded-full bg-chat-accent text-white text-[10px] font-bold flex items-center justify-center">32</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('communities')} 
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition ${
-              activeTab === 'communities' ? 'text-black' : 'hover:text-black'
+              activeTab === 'communities' ? 'text-white' : 'hover:text-white'
             }`}
           >
-            <Users size={20} className={activeTab === 'communities' ? 'text-emerald-600' : ''} />
+            <Users size={20} className={activeTab === 'communities' ? 'text-chat-accent' : ''} />
             <span className="mt-1">Komunitas</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('chat')} 
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition relative ${
-              activeTab === 'chat' ? 'text-black' : 'hover:text-black'
+              activeTab === 'chat' ? 'text-white' : 'hover:text-white'
             }`}
           >
-            <MessageSquareMore size={20} className={activeTab === 'chat' ? 'text-emerald-600' : ''} />
+            <MessageSquareMore size={20} className={activeTab === 'chat' ? 'text-chat-accent' : ''} />
             <span className="mt-1">Chat</span>
-            <span className="absolute top-1.5 right-4 w-5 h-5 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center">50</span>
+            <span className="absolute top-1.5 right-4 w-5 h-5 rounded-full bg-chat-accent text-white text-[10px] font-bold flex items-center justify-center">50</span>
           </button>
           
           <button 
             onClick={() => setActiveTab('you')} 
             className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition ${
-              activeTab === 'you' ? 'text-black' : 'hover:text-black'
+              activeTab === 'you' ? 'text-white' : 'hover:text-white'
             }`}
           >
-            <div className="relative w-6 h-6 rounded-full border overflow-hidden">
+            <div className="relative w-6 h-6 rounded-full border border-gray-800 overflow-hidden">
               <img src={avatar} className="w-full h-full object-cover" />
-              <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border border-white"></span>
+              <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border border-chat-header"></span>
             </div>
             <span className="mt-1">Anda</span>
           </button>
@@ -1487,7 +1487,7 @@ export default function App() {
       </div>
 
       {/* 2. MIDDLE PANEL: Active Chat Window */}
-      <div className={`flex-1 h-full flex flex-col relative bg-[#efeae2] ${
+      <div className={`flex-1 h-full flex flex-col relative bg-chat-bg ${
         mobileView === 'chat' ? 'flex' : 'hidden md:flex'
       }`}>
         
@@ -1495,7 +1495,7 @@ export default function App() {
         <div className="chat-wallpaper"></div>
 
         {/* Chat Window Header */}
-        <div className="h-16 px-4 bg-[#f0f2f5] border-b border-gray-200 flex items-center justify-between z-10 text-gray-900">
+        <div className="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between z-10 text-white">
           <div className="flex items-center space-x-3 cursor-pointer overflow-hidden" onClick={() => setShowDetails(!showDetails)}>
             {/* Back button on mobile */}
             <button 
@@ -1503,7 +1503,7 @@ export default function App() {
                 e.stopPropagation();
                 setMobileView('list');
               }}
-              className="md:hidden p-1.5 hover:bg-gray-200 rounded-full text-gray-600 hover:text-black transition shrink-0"
+              className="md:hidden p-1.5 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition shrink-0"
             >
               <ArrowLeft size={20} />
             </button>
@@ -1512,26 +1512,26 @@ export default function App() {
               <img 
                 src={dmPartner?.avatar || AVATARS[0]} 
                 alt={dmPartner?.username} 
-                className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
+                className="w-10 h-10 rounded-full object-cover border border-gray-800 shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-600 text-lg font-bold shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-lg font-bold shrink-0">
                 {currentRoomDetails.name.charAt(0)}
               </div>
             )}
             <div className="truncate">
-              <h3 className="font-bold text-black text-sm md:text-base leading-tight truncate">
+              <h3 className="font-bold text-white text-sm md:text-base leading-tight truncate">
                 {currentRoomDetails.name}
               </h3>
-              <p className="text-xs text-gray-500 truncate max-w-[150px] md:max-w-xs">
+              <p className="text-xs text-gray-400 truncate max-w-[150px] md:max-w-xs">
                 {isDmActive ? (
                   activeRoomOnline.some(u => u.username === dmPartner?.username) ? (
-                    <span className="text-emerald-600 font-medium">Online</span>
+                    <span className="text-emerald-400 font-medium">Online</span>
                   ) : (
                     <span>Offline</span>
                   )
                 ) : activeRoomOnline.length > 0 ? (
-                  <span className="text-emerald-600 font-medium">
+                  <span className="text-emerald-400 font-medium">
                     {activeRoomOnline.length + 1} online ({username}, {activeRoomOnline.map(u => u.username).join(', ')})
                   </span>
                 ) : (
@@ -1541,25 +1541,25 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 text-gray-600">
+          <div className="flex items-center space-x-3 text-gray-400">
             <button 
               onClick={() => handleCallInitiate('voice')} 
-              className="p-2 hover:bg-gray-200 rounded-full transition hover:text-black" 
+              className="p-2 hover:bg-chat-active rounded-full transition hover:text-white" 
               title="Panggilan Suara"
             >
               <Phone size={18} />
             </button>
             <button 
               onClick={() => handleCallInitiate('video')} 
-              className="p-2 hover:bg-gray-200 rounded-full transition hover:text-black" 
+              className="p-2 hover:bg-chat-active rounded-full transition hover:text-white" 
               title="Panggilan Video"
             >
               <Video size={18} />
             </button>
-            <div className="w-px h-6 bg-gray-350"></div>
+            <div className="w-px h-6 bg-gray-800"></div>
             <button 
               onClick={() => setShowDetails(!showDetails)}
-              className={`p-2 rounded-full transition ${showDetails ? 'bg-gray-200 text-emerald-600' : 'hover:bg-gray-200 hover:text-black'}`}
+              className={`p-2 rounded-full transition ${showDetails ? 'bg-chat-active text-chat-accent' : 'hover:bg-chat-active hover:text-white'}`}
               title="Informasi Grup"
             >
               <Info size={18} />
@@ -1578,7 +1578,7 @@ export default function App() {
                 <div key={msg.id} className="flex flex-col">
                   {showDateHeader && (
                     <div className="flex justify-center my-3">
-                      <span className="px-3 py-1 bg-[#eae6df] text-gray-600 rounded-md text-xs border border-gray-300/20 shadow-sm font-medium">
+                      <span className="px-3 py-1 bg-chat-header text-gray-300 rounded-md text-xs border border-gray-800/30 shadow-sm font-medium">
                         {new Date(msg.timestamp).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}
                       </span>
                     </div>
@@ -1587,8 +1587,8 @@ export default function App() {
                   <div className={`flex w-full ${msg.self ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] md:max-w-[55%] rounded-lg px-3 py-1.5 shadow-sm relative group animate-slideup ${
                       msg.self 
-                        ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none border border-emerald-100/50' 
-                        : 'bg-white text-gray-900 rounded-tl-none border border-gray-200/50'
+                        ? 'bg-chat-outgoing text-white rounded-tr-none border border-emerald-950/20' 
+                        : 'bg-chat-incoming text-white rounded-tl-none border border-gray-800/30'
                     }`}>
                       {/* Sender Info for incoming messages */}
                       {!msg.self && (
@@ -1598,7 +1598,7 @@ export default function App() {
                             alt={msg.sender} 
                             className="w-4 h-4 rounded-full object-cover"
                           />
-                          <span className="text-xs font-bold text-emerald-600">{msg.sender}</span>
+                          <span className="text-xs font-bold text-chat-accent">{msg.sender}</span>
                         </div>
                       )}
 
@@ -1616,7 +1616,7 @@ export default function App() {
                         <div className="flex items-center space-x-3 py-2 px-1 min-w-[200px]">
                           <button 
                             onClick={() => playAudio(msg.id, msg.mediaData)}
-                            className="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center transition shrink-0 shadow"
+                            className="w-9 h-9 rounded-full bg-chat-accent hover:bg-chat-accent/90 text-white flex items-center justify-center transition shrink-0 shadow"
                           >
                             {playingAudioId === msg.id ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
                           </button>
@@ -1627,7 +1627,7 @@ export default function App() {
                                   key={i} 
                                   className={`h-4 w-[2px] rounded-full transition-all duration-300 ${
                                     playingAudioId === msg.id && i % 3 === 0 ? 'h-6' : ''
-                                  } ${msg.self ? 'bg-emerald-400' : 'bg-gray-400'}`}
+                                  } ${msg.self ? 'bg-emerald-400' : 'bg-gray-500'}`}
                                 ></div>
                               ))}
                             </div>
@@ -1642,7 +1642,7 @@ export default function App() {
                       <div className="flex items-center justify-end space-x-1 mt-1 text-[10px] text-gray-400/80">
                         <span>{formatTime(msg.timestamp)}</span>
                         {msg.self && (
-                          <span className="text-blue-500">
+                          <span className="text-chat-accent">
                             <CheckCheck size={14} />
                           </span>
                         )}
@@ -1654,11 +1654,11 @@ export default function App() {
             })
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-8 max-w-md mx-auto">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-chat-active border border-gray-800 text-chat-accent flex items-center justify-center mb-4">
                 <MessageSquare size={32} />
               </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Selamat datang di Room {currentRoomDetails.name}!</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="font-bold text-lg text-white mb-2">Selamat datang di Room {currentRoomDetails.name}!</h3>
+              <p className="text-sm text-gray-400">
                 Semua obrolan dikirimkan secara langsung menggunakan MQTT. Ketik pesan Anda di bawah untuk memulai percakapan.
               </p>
             </div>
@@ -1667,7 +1667,7 @@ export default function App() {
           {/* Typing Indicator Bubble */}
           {activeRoomTyping.length > 0 && (
             <div className="flex justify-start items-center space-x-2 animate-pulse mt-2">
-              <div className="px-3 py-2 bg-white text-gray-500 rounded-lg rounded-tl-none text-xs flex items-center space-x-2 border border-gray-200/50 shadow-sm">
+              <div className="px-3 py-2 bg-chat-incoming text-gray-400 rounded-lg rounded-tl-none text-xs flex items-center space-x-2 border border-gray-800/30 shadow-sm">
                 <div className="flex items-center space-x-1 pr-1">
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
@@ -1684,11 +1684,11 @@ export default function App() {
         </div>
 
         {/* Input Bar Area */}
-        <div className="mt-auto bg-[#f0f2f5] border-t border-gray-200 p-3 flex flex-col z-10">
+        <div className="mt-auto bg-chat-header border-t border-gray-800 p-3 flex flex-col z-10">
           
           {/* Native Emoji Helper Drawer */}
           {showEmojiPicker && (
-            <div className="p-3 bg-white rounded-lg border border-gray-200 mb-3 flex flex-wrap gap-2 animate-slideup shadow-sm">
+            <div className="p-3 bg-chat-sidebar rounded-lg border border-gray-800 mb-3 flex flex-wrap gap-2 animate-slideup shadow-sm">
               {['😀','😂','😍','👍','🔥','🙌','👏','🎉','❤️','🤔','💡','🚀','👀','❌','✅','💤'].map(emoji => (
                 <button
                   key={emoji}
@@ -1696,7 +1696,7 @@ export default function App() {
                     setMessageText(prev => prev + emoji);
                     setShowEmojiPicker(false);
                   }}
-                  className="text-xl p-2 hover:bg-gray-100 rounded transition transform hover:scale-110"
+                  className="text-xl p-2 hover:bg-chat-active rounded transition transform hover:scale-110"
                 >
                   {emoji}
                 </button>
@@ -1705,11 +1705,11 @@ export default function App() {
           )}
 
           <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1.5 text-gray-500">
+            <div className="flex items-center space-x-1.5 text-gray-400">
               <button 
                 type="button"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`p-2 hover:bg-gray-200 rounded-full transition ${showEmojiPicker ? 'text-[#00a884]' : 'hover:text-black'}`}
+                className={`p-2 hover:bg-chat-active rounded-full transition ${showEmojiPicker ? 'text-chat-accent' : 'hover:text-white'}`}
                 title="Tambahkan Emoji"
               >
                 <Smile size={22} />
@@ -1718,7 +1718,7 @@ export default function App() {
               <button 
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 hover:bg-gray-200 rounded-full transition hover:text-black"
+                className="p-2 hover:bg-chat-active rounded-full transition hover:text-white"
                 title="Kirim Foto (Max 10MB)"
               >
                 <ImageIcon size={22} />
@@ -1734,7 +1734,7 @@ export default function App() {
               <button 
                 type="button"
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`p-2 hover:bg-gray-200 rounded-full transition ${isRecording ? 'text-red-500 animate-pulse' : 'hover:text-black'}`}
+                className={`p-2 hover:bg-chat-active rounded-full transition ${isRecording ? 'text-red-500 animate-pulse' : 'hover:text-white'}`}
                 title={isRecording ? "Kirim Rekaman" : "Mulai Rekam Suara"}
               >
                 <Mic size={22} />
@@ -1742,7 +1742,7 @@ export default function App() {
             </div>
 
             {isRecording ? (
-              <div className="flex-1 flex items-center justify-between bg-red-50 border border-red-200 py-2.5 px-4 rounded-lg text-red-500 animate-pulse text-sm">
+              <div className="flex-1 flex items-center justify-between bg-red-950/40 border border-red-900/40 py-2.5 px-4 rounded-lg text-red-400 animate-pulse text-sm">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                   <span className="font-semibold">Merekam: {recordingTime} detik (Maks 20s)</span>
@@ -1750,7 +1750,7 @@ export default function App() {
                 <button 
                   type="button" 
                   onClick={cancelRecording}
-                  className="text-gray-500 hover:text-black underline font-semibold text-xs transition"
+                  className="text-gray-400 hover:text-white underline font-semibold text-xs transition"
                 >
                   Batal
                 </button>
@@ -1759,7 +1759,7 @@ export default function App() {
               <input 
                 type="text" 
                 placeholder={connectionStatus === 'connected' ? "Ketik pesan..." : "Sedang menghubungkan ke Broker..."}
-                className="flex-1 bg-white border border-gray-200 outline-none text-gray-800 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-[#00a884] transition placeholder-gray-400"
+                className="flex-1 bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent transition placeholder-gray-500"
                 value={messageText}
                 onChange={onInputChange}
                 disabled={connectionStatus !== 'connected'}
