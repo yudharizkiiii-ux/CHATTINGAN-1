@@ -19,6 +19,7 @@ import {
   Plus, 
   Info, 
   Volume2, 
+  Volume1,
   VolumeX, 
   Moon, 
   Sun, 
@@ -126,6 +127,7 @@ export default function App() {
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [callRoomId, setCallRoomId] = useState('');
+  const [isLoudspeakerOn, setIsLoudspeakerOn] = useState(false);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -285,8 +287,20 @@ export default function App() {
     };
 
     pc.ontrack = (event) => {
+      console.log('Received remote track:', event.track.kind);
       if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+        remoteVideoRef.current.volume = isLoudspeakerOn ? 1.0 : 0.3;
+        if (remoteVideoRef.current.srcObject) {
+          remoteVideoRef.current.srcObject.addTrack(event.track);
+        } else {
+          if (event.streams && event.streams[0]) {
+            remoteVideoRef.current.srcObject = event.streams[0];
+          } else {
+            const newStream = new MediaStream();
+            newStream.addTrack(event.track);
+            remoteVideoRef.current.srcObject = newStream;
+          }
+        }
       }
     };
 
@@ -387,6 +401,7 @@ export default function App() {
     setCallState('idle');
     setIsAudioMuted(false);
     setIsVideoMuted(false);
+    setIsLoudspeakerOn(false);
 
     if (localStream.current) {
       localStream.current.getTracks().forEach(track => track.stop());
@@ -474,6 +489,17 @@ export default function App() {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoMuted(!videoTrack.enabled);
       }
+    }
+  };
+
+  const toggleLoudspeaker = () => {
+    if (remoteVideoRef.current) {
+      if (isLoudspeakerOn) {
+        remoteVideoRef.current.volume = 0.3;
+      } else {
+        remoteVideoRef.current.volume = 1.0;
+      }
+      setIsLoudspeakerOn(!isLoudspeakerOn);
     }
   };
 
@@ -1962,15 +1988,29 @@ export default function App() {
                 /* Caller or Active Call Options: Mute, Toggle Camera, End Call */
                 <>
                   {callState === 'connected' && (
-                    <button 
-                      onClick={toggleAudioMute} 
-                      className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
-                        isAudioMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                      }`}
-                      title={isAudioMuted ? "Unmute Mikrofon" : "Mute Mikrofon"}
-                    >
-                      {isAudioMuted ? <MicOff size={20} /> : <Mic size={20} />}
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      {/* Mode Hening (Mute Mic) */}
+                      <button 
+                        onClick={toggleAudioMute} 
+                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
+                          isAudioMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                        }`}
+                        title={isAudioMuted ? "Aktifkan Suara Anda" : "Mode Hening (Mute)"}
+                      >
+                        {isAudioMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                      </button>
+
+                      {/* Loudspeaker */}
+                      <button 
+                        onClick={toggleLoudspeaker} 
+                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
+                          isLoudspeakerOn ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                        }`}
+                        title={isLoudspeakerOn ? "Matikan Loudspeaker" : "Aktifkan Loudspeaker"}
+                      >
+                        {isLoudspeakerOn ? <Volume2 size={20} /> : <Volume1 size={20} />}
+                      </button>
+                    </div>
                   )}
 
                   <button 
