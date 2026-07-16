@@ -268,7 +268,7 @@ export default function App() {
   };
 
   // Start peer connection setup
-  const setupPeerConnection = () => {
+  const setupPeerConnection = (roomId) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
@@ -280,7 +280,7 @@ export default function App() {
           candidate: event.candidate,
           from: username
         };
-        client.publish(`mqtt_chat/calls/${activeRoom}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
+        client.publish(`mqtt_chat/calls/${roomId}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
       }
     };
 
@@ -313,7 +313,7 @@ export default function App() {
         localVideoRef.current.srcObject = stream;
       }
 
-      const pc = setupPeerConnection();
+      const pc = setupPeerConnection(activeRoom);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
       const offer = await pc.createOffer();
@@ -355,7 +355,7 @@ export default function App() {
       }, 100);
 
       const offerSdp = peerConnection.current?.pendingOfferSdp;
-      const pc = setupPeerConnection();
+      const pc = setupPeerConnection(callRoomId);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
       await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
@@ -1911,27 +1911,25 @@ export default function App() {
 
             {/* Video Streams Container */}
             <div className="relative w-full flex-1 max-h-[60%] flex items-center justify-center my-6 rounded-2xl overflow-hidden bg-chat-active/20 border border-gray-800 shadow-inner">
-              {callType === 'video' ? (
-                <>
-                  {/* Remote Video (Full Screen) */}
-                  <video 
-                    ref={remoteVideoRef} 
-                    autoPlay 
-                    playsInline 
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Local Video (Floating PIP) */}
-                  <video 
-                    ref={localVideoRef} 
-                    autoPlay 
-                    playsInline 
-                    muted 
-                    className="absolute bottom-4 right-4 w-32 md:w-44 aspect-video rounded-lg border-2 border-chat-accent/80 object-cover shadow-2xl"
-                  />
-                </>
-              ) : (
+              {/* Remote Video/Audio Stream */}
+              <video 
+                ref={remoteVideoRef} 
+                autoPlay 
+                playsInline 
+                className={`w-full h-full object-cover ${callType === 'video' ? 'block' : 'hidden'}`}
+              />
+              {/* Local Video Stream (PIP) */}
+              <video 
+                ref={localVideoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className={`absolute bottom-4 right-4 w-32 md:w-44 aspect-video rounded-lg border-2 border-chat-accent/80 object-cover shadow-2xl ${callType === 'video' ? 'block' : 'hidden'}`}
+              />
+
+              {callType === 'voice' && (
                 /* Voice Call Banner */
-                <div className="flex flex-col items-center justify-center space-y-3">
+                <div className="flex flex-col items-center justify-center space-y-3 z-10">
                   <div className="w-20 h-20 rounded-full bg-chat-accent/10 border border-chat-accent/30 flex items-center justify-center text-chat-accent animate-ping">
                     <Phone size={36} />
                   </div>
