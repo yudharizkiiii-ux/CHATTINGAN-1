@@ -125,6 +125,7 @@ export default function App() {
   const [partnerAvatar, setPartnerAvatar] = useState('');
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
+  const [callRoomId, setCallRoomId] = useState('');
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -298,6 +299,7 @@ export default function App() {
     setCallType(type);
     setPartnerUsername(targetUser);
     setPartnerAvatar(targetAv);
+    setCallRoomId(activeRoom);
     setCallState('calling');
 
     try {
@@ -372,7 +374,7 @@ export default function App() {
         sdp: answer,
         from: username
       };
-      client.publish(`mqtt_chat/calls/${activeRoom}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
+      client.publish(`mqtt_chat/calls/${callRoomId}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
     } catch (err) {
       console.error('Accept call failed:', err);
       endCall();
@@ -405,16 +407,20 @@ export default function App() {
         type: 'hangup',
         from: username
       };
-      client.publish(`mqtt_chat/calls/${activeRoom}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
+      client.publish(`mqtt_chat/calls/${callRoomId}/${partnerUsername}`, JSON.stringify(payload), { qos: 1 });
     }
   };
 
   // Handle incoming call signal
-  const handleCallSignal = async (data) => {
+  const handleCallSignal = async (data, topic) => {
+    const parts = topic.split('/');
+    const callingRoomId = parts[2];
+    setCallRoomId(callingRoomId);
+
     if (data.type === 'offer') {
       if (callState !== 'idle') {
         const payload = { type: 'hangup', from: username, reason: 'busy' };
-        client.publish(`mqtt_chat/calls/${activeRoom}/${data.from}`, JSON.stringify(payload), { qos: 1 });
+        client.publish(`mqtt_chat/calls/${callingRoomId}/${data.from}`, JSON.stringify(payload), { qos: 1 });
         return;
       }
       setPartnerUsername(data.from);
@@ -556,7 +562,7 @@ export default function App() {
         // Handle call signaling
         if (topic.includes('/calls/')) {
           if (data.from !== username) {
-            handleCallSignal(data);
+            handleCallSignal(data, topic);
           }
           return;
         }
