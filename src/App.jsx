@@ -32,7 +32,14 @@ import {
   MicOff,
   VideoOff,
   PhoneOff,
-  ArrowLeft
+  ArrowLeft,
+  Camera,
+  Archive,
+  CircleDot,
+  UserPlus,
+  MessageSquareMore,
+  MoreHorizontal,
+  ChevronDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -95,7 +102,7 @@ export default function App() {
   });
 
   // --- UI Interactions ---
-  const [activeTab, setActiveTab] = useState('rooms'); // 'rooms' | 'dms'
+  const [activeTab, setActiveTab] = useState('chat'); // 'updates' | 'calls' | 'communities' | 'chat' | 'you'
   const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat' | 'details'
   const [showStartDmModal, setShowStartDmModal] = useState(false);
   const [newDmUsername, setNewDmUsername] = useState('');
@@ -264,7 +271,7 @@ export default function App() {
 
     const dmRoomId = 'dm_' + [username, targetUsername].sort().join('_');
     setActiveRoom(dmRoomId);
-    setActiveTab('dms');
+    setActiveTab('chat');
     setMobileView('chat');
     setShowDetails(false);
   };
@@ -1061,249 +1068,415 @@ export default function App() {
     dm.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const getUnifiedChats = () => {
+    const allChats = [];
+    rooms.forEach(room => {
+      const roomMsgs = messages[room.id] || [];
+      const lastMsg = roomMsgs[roomMsgs.length - 1];
+      allChats.push({
+        id: room.id,
+        name: room.name,
+        description: room.description,
+        isGroup: true,
+        avatar: null,
+        lastMsg,
+        timestamp: lastMsg ? lastMsg.timestamp : 0
+      });
+    });
+    dms.forEach(dm => {
+      const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
+      const dmMessages = messages[dmRoomId] || [];
+      const lastMsg = dmMessages[dmMessages.length - 1];
+      allChats.push({
+        id: dmRoomId,
+        name: dm.username,
+        description: 'Chat Pribadi',
+        isGroup: false,
+        avatar: dm.avatar,
+        lastMsg,
+        timestamp: lastMsg ? lastMsg.timestamp : 0
+      });
+    });
+
+    const query = searchQuery.toLowerCase();
+    const filtered = allChats.filter(chat => 
+      chat.name.toLowerCase().includes(query) || 
+      (chat.description && chat.description.toLowerCase().includes(query))
+    );
+
+    return filtered.sort((a, b) => b.timestamp - a.timestamp);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-chat-bg text-gray-200">
       
       {/* 1. LEFT PANEL: Sidebar */}
-      <div className={`w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-800 bg-chat-sidebar shrink-0 z-10 ${
+      <div className={`w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-200 bg-white shrink-0 z-10 text-gray-900 ${
         mobileView === 'list' ? 'flex' : 'hidden md:flex'
       }`}>
         
         {/* User Profile Info Header */}
-        <div className="h-16 px-4 flex items-center justify-between bg-chat-header border-b border-gray-800">
+        <div className="h-16 px-4 flex items-center justify-between bg-white border-b border-gray-100">
+          {/* Left: Options menu */}
+          <button 
+            onClick={() => setActiveTab('you')}
+            className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition"
+            title="Pengaturan"
+          >
+            <span className="font-bold text-lg">...</span>
+          </button>
+
+          {/* Right: Actions */}
           <div className="flex items-center space-x-3">
             <button 
-              onClick={() => setShowSettings(true)}
-              className="relative group transition hover:scale-105"
+              onClick={() => alert('Fitur Kamera Jaringan Lokal')}
+              className="p-2 hover:bg-gray-100 rounded-full text-gray-700 transition"
+              title="Kamera"
             >
-              <img 
-                src={avatar} 
-                alt="Avatar" 
-                className="w-10 h-10 rounded-full object-cover border-2 border-chat-accent/40"
-              />
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-chat-sidebar"></span>
-            </button>
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm leading-tight text-white hover:text-chat-accent cursor-pointer transition" onClick={() => setShowSettings(true)}>
-                {username}
-              </span>
-              <span className="text-[11px] text-gray-400">Online via MQTT</span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => setSoundEnabled(!soundEnabled)} 
-              title={soundEnabled ? 'Matikan Suara' : 'Aktifkan Suara'}
-              className="p-2 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition"
-            >
-              {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+              <Camera size={22} />
             </button>
             <button 
               onClick={() => {
-                if (activeTab === 'rooms') {
-                  setShowCreateRoomModal(true);
-                } else {
-                  setShowStartDmModal(true);
-                }
+                setShowStartDmModal(true);
               }} 
-              title={activeTab === 'rooms' ? 'Buat Room Baru' : 'Mulai Obrolan Pribadi'}
-              className="p-2 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition"
+              className="w-9 h-9 bg-[#25d366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow transition transform active:scale-95"
+              title="Chat Baru / Grup Baru"
             >
               <Plus size={20} />
             </button>
-            <button 
-              onClick={() => setShowSettings(true)} 
-              title="Pengaturan MQTT"
-              className="p-2 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition"
-            >
-              <Settings size={20} />
-            </button>
           </div>
         </div>
 
-        {/* Connection Status Banner */}
-        <div className={`px-4 py-2 text-xs flex items-center justify-between border-b transition-all duration-300 ${
-          connectionStatus === 'connected' ? 'bg-emerald-950/40 border-emerald-900/40 text-emerald-400' :
-          connectionStatus === 'connecting' ? 'bg-amber-950/40 border-amber-900/40 text-amber-400' :
-          'bg-rose-950/40 border-rose-900/40 text-rose-400'
-        }`}>
-          <div className="flex items-center space-x-2">
-            <span className={`w-2 h-2 rounded-full ${
-              connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' :
-              connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' :
-              'bg-rose-500'
-            }`}></span>
-            <span className="font-medium">
-              {connectionStatus === 'connected' && `Terhubung ke ${DEFAULT_BROKERS.find(b => b.url === brokerUrl)?.name || 'MQTT Broker'}`}
-              {connectionStatus === 'connecting' && 'Sedang menghubungkan ke Broker...'}
-              {connectionStatus === 'disconnected' && 'Terputus dari Broker'}
-              {connectionStatus === 'error' && 'Gagal terhubung ke Broker'}
-            </span>
-          </div>
-          <button 
-            onClick={() => setShowSettings(true)}
-            className="underline hover:text-white font-semibold transition"
-          >
-            Ubah
-          </button>
-        </div>
+        {/* Dynamic Content Area based on Tab Selection */}
+        {activeTab === 'chat' && (
+          <>
+            {/* Title */}
+            <div className="px-4 py-2">
+              <h1 className="text-3xl font-bold text-black tracking-tight">Chat</h1>
+            </div>
 
-        {/* Tab Switcher */}
-        <div className="flex border-b border-gray-800/60 bg-chat-header/30">
-          <button 
-            onClick={() => setActiveTab('rooms')}
-            className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition ${
-              activeTab === 'rooms' ? 'border-chat-accent text-white' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            Grup Obrolan
-          </button>
-          <button 
-            onClick={() => setActiveTab('dms')}
-            className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition ${
-              activeTab === 'dms' ? 'border-chat-accent text-white' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            Pesan Pribadi
-          </button>
-        </div>
+            {/* Search Chats */}
+            <div className="px-4 py-2 bg-white">
+              <div className="relative flex items-center bg-[#f0f2f5] rounded-full px-4 py-2 text-gray-500 transition focus-within:bg-gray-200/80">
+                <Search size={18} className="mr-3 text-gray-400" />
+                <input 
+                  type="text" 
+                  placeholder="Tanya Meta AI atau cari" 
+                  className="bg-transparent border-none outline-none w-full text-sm text-gray-850 placeholder-gray-500"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
 
-        {/* Search Chats */}
-        <div className="p-3 bg-chat-sidebar">
-          <div className="relative flex items-center bg-chat-active rounded-lg px-3 py-2 text-gray-400 border border-transparent focus-within:border-chat-accent/50 transition">
-            <Search size={18} className="mr-3" />
-            <input 
-              type="text" 
-              placeholder={activeTab === 'rooms' ? 'Cari grup obrolan' : 'Cari kontak pribadi'} 
-              className="bg-transparent border-none outline-none w-full text-sm text-gray-200 placeholder-gray-400"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
+            {/* Archived Section Row */}
+            <div className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer border-b border-gray-100/50">
+              <div className="flex items-center space-x-4">
+                <Archive size={20} className="text-gray-500" />
+                <span className="text-sm font-semibold text-gray-800">Diarsipkan</span>
+              </div>
+              <span className="text-xs text-[#25d366] font-bold">2</span>
+            </div>
 
-        {/* Chat Rooms & DMs List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-gray-800/40">
-          {activeTab === 'rooms' ? (
-            filteredRooms.length > 0 ? (
-              filteredRooms.map(room => {
-                const roomMsgs = messages[room.id] || [];
-                const lastMsg = roomMsgs[roomMsgs.length - 1];
-                const isSelected = activeRoom === room.id;
+            {/* Unified Chats List */}
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+              {getUnifiedChats().length > 0 ? (
+                getUnifiedChats().map(chat => {
+                  const isSelected = activeRoom === chat.id;
+                  const isOnline = !chat.isGroup && (onlineUsers[chat.id] || []).some(u => u.username === chat.name);
 
-                return (
-                  <button
-                    key={room.id}
-                    onClick={() => {
-                      setActiveRoom(room.id);
-                      setMobileView('chat');
-                      setShowEmojiPicker(false);
-                    }}
-                    className={`w-full text-left p-4 flex items-center space-x-3 transition-colors ${
-                      isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'
-                    }`}
-                  >
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-xl font-bold shrink-0">
-                      {room.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline mb-1">
-                        <span className="font-semibold text-white text-base truncate">{room.name}</span>
-                        {lastMsg && (
-                          <span className="text-[11px] text-gray-400 shrink-0">{formatTime(lastMsg.timestamp)}</span>
+                  return (
+                    <button
+                      key={chat.id}
+                      onClick={() => {
+                        setActiveRoom(chat.id);
+                        setMobileView('chat');
+                        setShowEmojiPicker(false);
+                      }}
+                      className={`w-full text-left p-4 flex items-center space-x-3 transition-colors ${
+                        isSelected ? 'bg-gray-100' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {/* Avatar */}
+                      <div className="relative shrink-0">
+                        {chat.isGroup ? (
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-600 text-xl font-bold shrink-0">
+                            {chat.name.charAt(0)}
+                          </div>
+                        ) : (
+                          <img 
+                            src={chat.avatar || AVATARS[0]} 
+                            alt={chat.name} 
+                            className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                          />
+                        )}
+                        {isOnline && (
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white"></span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-400 truncate">
-                        {lastMsg ? (
-                          <>
-                            <span className="text-gray-300 font-medium">{lastMsg.sender === username ? 'Anda' : lastMsg.sender}: </span>
-                            {lastMsg.text}
-                          </>
-                        ) : (
-                          room.description || 'Belum ada obrolan'
-                        )}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })
-            ) : (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <MessageSquare size={40} className="text-gray-600 mb-2" />
-                <p className="text-gray-500 text-sm">Tidak ada room yang ditemukan</p>
-              </div>
-            )
-          ) : (
-            filteredDms.length > 0 ? (
-              filteredDms.map(dm => {
-                const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
-                const dmMessages = messages[dmRoomId] || [];
-                const lastMsg = dmMessages[dmMessages.length - 1];
-                const isSelected = activeRoom === dmRoomId;
-                const isOnline = (onlineUsers[dmRoomId] || []).some(u => u.username === dm.username);
 
-                return (
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline mb-1">
+                          <span className="font-bold text-gray-900 text-base truncate">{chat.name}</span>
+                          {chat.lastMsg ? (
+                            <span className="text-[11px] text-gray-400 shrink-0 font-medium">{formatTime(chat.lastMsg.timestamp)}</span>
+                          ) : (
+                            <span className="text-[11px] text-gray-400 shrink-0 font-medium">08.55</span>
+                          )}
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-sm text-gray-500 truncate flex-1 pr-2">
+                            {chat.lastMsg ? (
+                              <span className="flex items-center space-x-1">
+                                {chat.lastMsg.sender === username && (
+                                  <CheckCheck size={16} className="text-blue-500 shrink-0 inline mr-1" />
+                                )}
+                                <span className="truncate">{chat.lastMsg.text}</span>
+                              </span>
+                            ) : (
+                              <span className="italic text-gray-400">{chat.description || 'Mulai obrolan...'}</span>
+                            )}
+                          </p>
+                          {/* Unread mock/active indicator */}
+                          {!chat.lastMsg && (
+                            <span className="w-5 h-5 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center">8</span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                  <MessageSquare size={40} className="text-gray-300 mb-2" />
+                  <p className="text-gray-400 text-sm">Tidak ada chat ditemukan</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Tab 2: Updates (Pembaruan) */}
+        {activeTab === 'updates' && (
+          <div className="flex-1 flex flex-col p-4">
+            <h1 className="text-3xl font-bold text-black tracking-tight mb-4">Pembaruan</h1>
+            <div className="flex items-center space-x-3 mb-6 p-2">
+              <div className="relative">
+                <img src={avatar} className="w-14 h-14 rounded-full border-2 border-gray-200 object-cover" />
+                <span className="absolute bottom-0 right-0 w-5 h-5 bg-[#25d366] rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold">+</span>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900 text-sm">Status Saya</h4>
+                <p className="text-xs text-gray-500">Ketuk untuk menambahkan pembaruan status</p>
+              </div>
+            </div>
+            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pembaruan terkini</h5>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-full border-2 border-emerald-500 p-0.5">
+                  <img src={AVATARS[1]} className="w-full h-full rounded-full object-cover" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-950 text-sm">serda Desta</h4>
+                  <p className="text-xs text-gray-400">Baru saja</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Calls (Panggilan) */}
+        {activeTab === 'calls' && (
+          <div className="flex-1 flex flex-col">
+            <div className="p-4">
+              <h1 className="text-3xl font-bold text-black tracking-tight">Panggilan</h1>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <img src={AVATARS[2]} className="w-12 h-12 rounded-full object-cover" />
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm">serda Desta</h4>
+                    <p className="text-xs text-red-500 flex items-center">✓ Telepon video • 09.55</p>
+                  </div>
+                </div>
+                <Video size={20} className="text-emerald-500 cursor-pointer" onClick={() => startCall('video', 'serda Desta', AVATARS[2])} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <img src={AVATARS[3]} className="w-12 h-12 rounded-full object-cover" />
+                  <div>
+                    <h4 className="font-bold text-gray-950 text-sm">Pratu Dani</h4>
+                    <p className="text-xs text-emerald-500 flex items-center">✓ Telepon video • 08.48</p>
+                  </div>
+                </div>
+                <Video size={20} className="text-emerald-500 cursor-pointer" onClick={() => startCall('video', 'Pratu Dani', AVATARS[3])} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Communities (Komunitas) */}
+        {activeTab === 'communities' && (
+          <div className="flex-1 flex flex-col p-6 items-center justify-center text-center">
+            <Users size={64} className="text-emerald-500 mb-4" />
+            <h2 className="text-xl font-bold text-black mb-2">Perkenalkan Komunitas</h2>
+            <p className="text-sm text-gray-500 max-w-xs">
+              Hubungkan grup-grup obrolan yang berkaitan dan kelola dalam satu tempat dengan mudah.
+            </p>
+          </div>
+        )}
+
+        {/* Tab 5: You (Anda) / Native Settings */}
+        {activeTab === 'you' && (
+          <div className="flex-1 flex flex-col p-4 bg-gray-50 overflow-y-auto">
+            <h1 className="text-3xl font-bold text-black tracking-tight mb-4">Anda</h1>
+            
+            {/* Profile summary card */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center space-x-4 mb-6">
+              <div className="relative">
+                <img src={avatar} className="w-16 h-16 rounded-full object-cover border border-gray-200" />
+                <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></span>
+              </div>
+              <div className="flex-1">
+                <input 
+                  type="text" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="font-bold text-lg text-black bg-transparent border-b border-transparent hover:border-gray-300 focus:border-emerald-500 outline-none w-full"
+                />
+                <p className="text-xs text-gray-500 mt-0.5">Ketuk untuk ubah nama panggilan</p>
+              </div>
+            </div>
+
+            {/* Avatar picker */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
+              <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Ubah Foto Profil</h5>
+              <div className="flex gap-2.5 flex-wrap">
+                {AVATARS.map((av, index) => (
                   <button
-                    key={dm.username}
-                    onClick={() => {
-                      setActiveRoom(dmRoomId);
-                      setMobileView('chat');
-                      setShowEmojiPicker(false);
-                    }}
-                    className={`w-full text-left p-4 flex items-center space-x-3 transition-colors ${
-                      isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'
+                    key={index}
+                    onClick={() => setAvatar(av)}
+                    className={`w-11 h-11 rounded-full overflow-hidden border-2 transition ${
+                      avatar === av ? 'border-emerald-500 scale-105 shadow' : 'border-transparent hover:border-gray-200'
                     }`}
                   >
-                    <div className="relative shrink-0">
-                      <img 
-                        src={dm.avatar} 
-                        alt={dm.username} 
-                        className="w-12 h-12 rounded-full object-cover border border-gray-800"
-                      />
-                      {isOnline && (
-                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-chat-sidebar"></span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline mb-1">
-                        <span className="font-semibold text-white text-base truncate">{dm.username}</span>
-                        {lastMsg && (
-                          <span className="text-[11px] text-gray-400 shrink-0">{formatTime(lastMsg.timestamp)}</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-400 truncate">
-                        {lastMsg ? (
-                          <>
-                            <span className="text-gray-300 font-medium">{lastMsg.sender === username ? 'Anda' : lastMsg.sender}: </span>
-                            {lastMsg.text}
-                          </>
-                        ) : (
-                          <span className="italic text-gray-500">Mulai chat pribadi...</span>
-                        )}
-                      </p>
-                    </div>
+                    <img src={av} className="w-full h-full object-cover" />
                   </button>
-                );
-              })
-            ) : (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <MessageSquare size={40} className="text-gray-600 mb-2" />
-                <p className="text-gray-500 text-sm">Belum ada obrolan pribadi</p>
-                <button
-                  onClick={() => setShowStartDmModal(true)}
-                  className="mt-3 bg-chat-accent hover:bg-chat-accent/90 text-white text-xs px-3 py-1.5 rounded-lg transition"
-                >
-                  Mulai Obrolan Baru
-                </button>
+                ))}
               </div>
-            )
-          )}
+            </div>
+
+            {/* MQTT Server Setup */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
+              <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Server Broker MQTT</h5>
+              <input 
+                type="text" 
+                value={brokerUrl}
+                onChange={(e) => setBrokerUrl(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 outline-none text-gray-800 text-xs py-2 px-3 rounded-lg focus:ring-1 focus:ring-emerald-500 font-mono"
+              />
+              <div className="flex gap-2 flex-wrap mt-2">
+                {DEFAULT_BROKERS.map(broker => (
+                  <button
+                    key={broker.url}
+                    onClick={() => setBrokerUrl(broker.url)}
+                    className={`text-[10px] px-2 py-1 rounded transition border ${
+                      brokerUrl === broker.url 
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700' 
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {broker.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Connection Banner */}
+            <div className={`p-4 rounded-xl text-xs flex items-center justify-between border ${
+              connectionStatus === 'connected' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+              connectionStatus === 'connecting' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+              'bg-red-50 border-red-200 text-red-700'
+            }`}>
+              <div className="flex items-center space-x-2">
+                <span className={`w-2 h-2 rounded-full ${
+                  connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' :
+                  connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' :
+                  'bg-red-500'
+                }`}></span>
+                <span className="font-semibold">
+                  {connectionStatus === 'connected' ? 'Broker Terkoneksi' :
+                   connectionStatus === 'connecting' ? 'Menghubungkan...' : 'Koneksi Terputus'}
+                </span>
+              </div>
+              <button onClick={() => setMessages({})} className="text-red-500 font-bold hover:underline">Hapus Chat</button>
+            </div>
+          </div>
+        )}
+
+        {/* BOTTOM NAVIGATION BAR */}
+        <div className="h-16 border-t border-gray-200 bg-white flex items-center justify-around shrink-0 text-gray-500 select-none z-10">
+          <button 
+            onClick={() => setActiveTab('updates')} 
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition ${
+              activeTab === 'updates' ? 'text-black' : 'hover:text-black'
+            }`}
+          >
+            <CircleDot size={20} className={activeTab === 'updates' ? 'text-emerald-600' : ''} />
+            <span className="mt-1">Pembaruan</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('calls')} 
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition relative ${
+              activeTab === 'calls' ? 'text-black' : 'hover:text-black'
+            }`}
+          >
+            <Phone size={20} className={activeTab === 'calls' ? 'text-emerald-600' : ''} />
+            <span className="mt-1">Panggilan</span>
+            <span className="absolute top-1.5 right-4 w-5 h-5 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center">32</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('communities')} 
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition ${
+              activeTab === 'communities' ? 'text-black' : 'hover:text-black'
+            }`}
+          >
+            <Users size={20} className={activeTab === 'communities' ? 'text-emerald-600' : ''} />
+            <span className="mt-1">Komunitas</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('chat')} 
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition relative ${
+              activeTab === 'chat' ? 'text-black' : 'hover:text-black'
+            }`}
+          >
+            <MessageSquareMore size={20} className={activeTab === 'chat' ? 'text-emerald-600' : ''} />
+            <span className="mt-1">Chat</span>
+            <span className="absolute top-1.5 right-4 w-5 h-5 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center">50</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('you')} 
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition ${
+              activeTab === 'you' ? 'text-black' : 'hover:text-black'
+            }`}
+          >
+            <div className="relative w-6 h-6 rounded-full border overflow-hidden">
+              <img src={avatar} className="w-full h-full object-cover" />
+              <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border border-white"></span>
+            </div>
+            <span className="mt-1">Anda</span>
+          </button>
         </div>
       </div>
 
       {/* 2. MIDDLE PANEL: Active Chat Window */}
-      <div className={`flex-1 h-full flex flex-col relative bg-[#0b141a] ${
+      <div className={`flex-1 h-full flex flex-col relative bg-[#efeae2] ${
         mobileView === 'chat' ? 'flex' : 'hidden md:flex'
       }`}>
         
@@ -1311,7 +1484,7 @@ export default function App() {
         <div className="chat-wallpaper"></div>
 
         {/* Chat Window Header */}
-        <div className="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between z-10">
+        <div className="h-16 px-4 bg-[#f0f2f5] border-b border-gray-200 flex items-center justify-between z-10 text-gray-900">
           <div className="flex items-center space-x-3 cursor-pointer overflow-hidden" onClick={() => setShowDetails(!showDetails)}>
             {/* Back button on mobile */}
             <button 
@@ -1319,7 +1492,7 @@ export default function App() {
                 e.stopPropagation();
                 setMobileView('list');
               }}
-              className="md:hidden p-1.5 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition shrink-0"
+              className="md:hidden p-1.5 hover:bg-gray-200 rounded-full text-gray-600 hover:text-black transition shrink-0"
             >
               <ArrowLeft size={20} />
             </button>
@@ -1328,26 +1501,26 @@ export default function App() {
               <img 
                 src={dmPartner?.avatar || AVATARS[0]} 
                 alt={dmPartner?.username} 
-                className="w-10 h-10 rounded-full object-cover border border-gray-800 shrink-0"
+                className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-lg font-bold shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-600 text-lg font-bold shrink-0">
                 {currentRoomDetails.name.charAt(0)}
               </div>
             )}
             <div className="truncate">
-              <h3 className="font-semibold text-white text-sm md:text-base leading-tight truncate">
+              <h3 className="font-bold text-black text-sm md:text-base leading-tight truncate">
                 {currentRoomDetails.name}
               </h3>
-              <p className="text-xs text-gray-400 truncate max-w-[150px] md:max-w-xs">
+              <p className="text-xs text-gray-500 truncate max-w-[150px] md:max-w-xs">
                 {isDmActive ? (
                   activeRoomOnline.some(u => u.username === dmPartner?.username) ? (
-                    <span className="text-emerald-400 font-medium">Online</span>
+                    <span className="text-emerald-600 font-medium">Online</span>
                   ) : (
                     <span>Offline</span>
                   )
                 ) : activeRoomOnline.length > 0 ? (
-                  <span className="text-emerald-400 font-medium">
+                  <span className="text-emerald-600 font-medium">
                     {activeRoomOnline.length + 1} online ({username}, {activeRoomOnline.map(u => u.username).join(', ')})
                   </span>
                 ) : (
@@ -1357,25 +1530,25 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 text-gray-300">
+          <div className="flex items-center space-x-3 text-gray-600">
             <button 
               onClick={() => handleCallInitiate('voice')} 
-              className="p-2 hover:bg-chat-active rounded-full transition hover:text-white" 
+              className="p-2 hover:bg-gray-200 rounded-full transition hover:text-black" 
               title="Panggilan Suara"
             >
               <Phone size={18} />
             </button>
             <button 
               onClick={() => handleCallInitiate('video')} 
-              className="p-2 hover:bg-chat-active rounded-full transition hover:text-white" 
+              className="p-2 hover:bg-gray-200 rounded-full transition hover:text-black" 
               title="Panggilan Video"
             >
               <Video size={18} />
             </button>
-            <div className="w-px h-6 bg-gray-800"></div>
+            <div className="w-px h-6 bg-gray-350"></div>
             <button 
               onClick={() => setShowDetails(!showDetails)}
-              className={`p-2 rounded-full transition ${showDetails ? 'bg-chat-active text-chat-accent' : 'hover:bg-chat-active hover:text-white'}`}
+              className={`p-2 rounded-full transition ${showDetails ? 'bg-gray-200 text-emerald-600' : 'hover:bg-gray-200 hover:text-black'}`}
               title="Informasi Grup"
             >
               <Info size={18} />
@@ -1394,17 +1567,17 @@ export default function App() {
                 <div key={msg.id} className="flex flex-col">
                   {showDateHeader && (
                     <div className="flex justify-center my-3">
-                      <span className="px-3 py-1 bg-chat-header text-gray-400 rounded-md text-xs border border-gray-800/30">
+                      <span className="px-3 py-1 bg-[#eae6df] text-gray-600 rounded-md text-xs border border-gray-300/20 shadow-sm font-medium">
                         {new Date(msg.timestamp).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}
                       </span>
                     </div>
                   )}
 
                   <div className={`flex w-full ${msg.self ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] md:max-w-[55%] rounded-lg px-3 py-1.5 shadow-md relative group animate-slideup ${
+                    <div className={`max-w-[70%] md:max-w-[55%] rounded-lg px-3 py-1.5 shadow-sm relative group animate-slideup ${
                       msg.self 
-                        ? 'bg-chat-outgoing text-emerald-50 rounded-tr-none' 
-                        : 'bg-chat-incoming text-gray-100 rounded-tl-none'
+                        ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none border border-emerald-100/50' 
+                        : 'bg-white text-gray-900 rounded-tl-none border border-gray-200/50'
                     }`}>
                       {/* Sender Info for incoming messages */}
                       {!msg.self && (
@@ -1414,7 +1587,7 @@ export default function App() {
                             alt={msg.sender} 
                             className="w-4 h-4 rounded-full object-cover"
                           />
-                          <span className="text-xs font-semibold text-emerald-400">{msg.sender}</span>
+                          <span className="text-xs font-bold text-emerald-600">{msg.sender}</span>
                         </div>
                       )}
 
@@ -1443,7 +1616,7 @@ export default function App() {
                                   key={i} 
                                   className={`h-4 w-[2px] rounded-full transition-all duration-300 ${
                                     playingAudioId === msg.id && i % 3 === 0 ? 'h-6' : ''
-                                  } ${msg.self ? 'bg-emerald-300' : 'bg-gray-400'}`}
+                                  } ${msg.self ? 'bg-emerald-400' : 'bg-gray-400'}`}
                                 ></div>
                               ))}
                             </div>
@@ -1458,7 +1631,7 @@ export default function App() {
                       <div className="flex items-center justify-end space-x-1 mt-1 text-[10px] text-gray-400/80">
                         <span>{formatTime(msg.timestamp)}</span>
                         {msg.self && (
-                          <span className="text-teal-400">
+                          <span className="text-blue-500">
                             <CheckCheck size={14} />
                           </span>
                         )}
@@ -1473,8 +1646,8 @@ export default function App() {
               <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-4">
                 <MessageSquare size={32} />
               </div>
-              <h3 className="font-semibold text-lg text-white mb-2">Selamat datang di Room {currentRoomDetails.name}!</h3>
-              <p className="text-sm text-gray-400">
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Selamat datang di Room {currentRoomDetails.name}!</h3>
+              <p className="text-sm text-gray-500">
                 Semua obrolan dikirimkan secara langsung menggunakan MQTT. Ketik pesan Anda di bawah untuk memulai percakapan.
               </p>
             </div>
@@ -1483,7 +1656,7 @@ export default function App() {
           {/* Typing Indicator Bubble */}
           {activeRoomTyping.length > 0 && (
             <div className="flex justify-start items-center space-x-2 animate-pulse mt-2">
-              <div className="px-3 py-2 bg-chat-incoming text-gray-400 rounded-lg rounded-tl-none text-xs flex items-center space-x-2 border border-gray-800/30">
+              <div className="px-3 py-2 bg-white text-gray-500 rounded-lg rounded-tl-none text-xs flex items-center space-x-2 border border-gray-200/50 shadow-sm">
                 <div className="flex items-center space-x-1 pr-1">
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
@@ -1500,11 +1673,11 @@ export default function App() {
         </div>
 
         {/* Input Bar Area */}
-        <div className="mt-auto bg-chat-header border-t border-gray-800 p-3 flex flex-col z-10">
+        <div className="mt-auto bg-[#f0f2f5] border-t border-gray-200 p-3 flex flex-col z-10">
           
           {/* Native Emoji Helper Drawer */}
           {showEmojiPicker && (
-            <div className="p-3 bg-chat-sidebar rounded-lg border border-gray-800 mb-3 flex flex-wrap gap-2 animate-slideup">
+            <div className="p-3 bg-white rounded-lg border border-gray-200 mb-3 flex flex-wrap gap-2 animate-slideup shadow-sm">
               {['😀','😂','😍','👍','🔥','🙌','👏','🎉','❤️','🤔','💡','🚀','👀','❌','✅','💤'].map(emoji => (
                 <button
                   key={emoji}
@@ -1512,7 +1685,7 @@ export default function App() {
                     setMessageText(prev => prev + emoji);
                     setShowEmojiPicker(false);
                   }}
-                  className="text-xl p-2 hover:bg-chat-active rounded transition transform hover:scale-110"
+                  className="text-xl p-2 hover:bg-gray-100 rounded transition transform hover:scale-110"
                 >
                   {emoji}
                 </button>
@@ -1521,11 +1694,11 @@ export default function App() {
           )}
 
           <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1.5 text-gray-400">
+            <div className="flex items-center space-x-1.5 text-gray-500">
               <button 
                 type="button"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`p-2 hover:bg-chat-active rounded-full transition ${showEmojiPicker ? 'text-chat-accent' : 'hover:text-white'}`}
+                className={`p-2 hover:bg-gray-200 rounded-full transition ${showEmojiPicker ? 'text-[#00a884]' : 'hover:text-black'}`}
                 title="Tambahkan Emoji"
               >
                 <Smile size={22} />
@@ -1534,7 +1707,7 @@ export default function App() {
               <button 
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 hover:bg-chat-active rounded-full transition hover:text-white"
+                className="p-2 hover:bg-gray-200 rounded-full transition hover:text-black"
                 title="Kirim Foto (Max 10MB)"
               >
                 <ImageIcon size={22} />
@@ -1550,7 +1723,7 @@ export default function App() {
               <button 
                 type="button"
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`p-2 hover:bg-chat-active rounded-full transition ${isRecording ? 'text-red-500 animate-pulse' : 'hover:text-white'}`}
+                className={`p-2 hover:bg-gray-200 rounded-full transition ${isRecording ? 'text-red-500 animate-pulse' : 'hover:text-black'}`}
                 title={isRecording ? "Kirim Rekaman" : "Mulai Rekam Suara"}
               >
                 <Mic size={22} />
@@ -1558,7 +1731,7 @@ export default function App() {
             </div>
 
             {isRecording ? (
-              <div className="flex-1 flex items-center justify-between bg-red-950/40 border border-red-900/40 py-2.5 px-4 rounded-lg text-red-400 animate-pulse text-sm">
+              <div className="flex-1 flex items-center justify-between bg-red-50 border border-red-200 py-2.5 px-4 rounded-lg text-red-500 animate-pulse text-sm">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                   <span className="font-semibold">Merekam: {recordingTime} detik (Maks 20s)</span>
@@ -1566,7 +1739,7 @@ export default function App() {
                 <button 
                   type="button" 
                   onClick={cancelRecording}
-                  className="text-gray-400 hover:text-white underline font-semibold text-xs transition"
+                  className="text-gray-500 hover:text-black underline font-semibold text-xs transition"
                 >
                   Batal
                 </button>
@@ -1575,7 +1748,7 @@ export default function App() {
               <input 
                 type="text" 
                 placeholder={connectionStatus === 'connected' ? "Ketik pesan..." : "Sedang menghubungkan ke Broker..."}
-                className="flex-1 bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent transition placeholder-gray-500"
+                className="flex-1 bg-white border border-gray-200 outline-none text-gray-800 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-[#00a884] transition placeholder-gray-400"
                 value={messageText}
                 onChange={onInputChange}
                 disabled={connectionStatus !== 'connected'}
@@ -1917,125 +2090,144 @@ export default function App() {
         </div>
       )}
       {callState !== 'idle' && (
-        <div className="fixed inset-0 bg-gray-950/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-4xl flex flex-col h-full items-center justify-between py-8">
+        <div className="fixed inset-0 bg-[#0c1317] z-50 flex flex-col items-center justify-between p-6 select-none">
+          {/* Wallpaper pattern for call screen */}
+          <div className="call-wallpaper"></div>
+          
+          {/* 1. Call Screen Header */}
+          <div className="w-full flex items-center justify-between z-10">
+            {/* Left collapse button */}
+            <button 
+              onClick={() => endCall(true)}
+              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition active:scale-95"
+              title="Perkecil"
+            >
+              <ChevronDown size={20} />
+            </button>
             
-            {/* Caller Info Header */}
-            <div className="text-center space-y-3 z-10">
-              <img 
-                src={partnerAvatar || AVATARS[0]} 
-                alt={partnerUsername} 
-                className="w-24 h-24 rounded-full object-cover border-4 border-chat-accent/60 mx-auto shadow-2xl animate-pulse"
-              />
-              <h2 className="text-2xl font-bold text-white tracking-wide">{partnerUsername}</h2>
-              <p className="text-sm text-chat-accent font-medium">
-                {callState === 'calling' && 'Sedang Memanggil...'}
-                {callState === 'ringing' && `Panggilan ${callType === 'video' ? 'Video' : 'Suara'} Masuk...`}
-                {callState === 'connected' && `Terhubung • Panggilan ${callType === 'video' ? 'Video' : 'Suara'}`}
+            {/* Center Call Status */}
+            <div className="text-center flex-1 mx-4">
+              <h2 className="text-xl font-bold text-white tracking-wide">{partnerUsername || 'Teman Chat'}</h2>
+              <p className="text-xs text-gray-400 font-medium mt-0.5">
+                {callState === 'calling' && 'Memanggil...'}
+                {callState === 'ringing' && 'Berdering...'}
+                {callState === 'connected' && 'Terhubung'}
               </p>
             </div>
+            
+            {/* Right Add Participant button */}
+            <button 
+              onClick={() => alert('Fitur panggilan grup lokal')}
+              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition active:scale-95"
+              title="Tambah Peserta"
+            >
+              <UserPlus size={20} />
+            </button>
+          </div>
 
-            {/* Video Streams Container */}
-            <div className="relative w-full flex-1 max-h-[60%] flex items-center justify-center my-6 rounded-2xl overflow-hidden bg-chat-active/20 border border-gray-800 shadow-inner">
-              {/* Remote Video/Audio Stream */}
-              <video 
-                ref={remoteVideoRef} 
-                autoPlay 
-                playsInline 
-                className={`w-full h-full object-cover ${callType === 'video' ? 'block' : 'hidden'}`}
-              />
-              {/* Local Video Stream (PIP) */}
-              <video 
-                ref={localVideoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className={`absolute bottom-4 right-4 w-32 md:w-44 aspect-video rounded-lg border-2 border-chat-accent/80 object-cover shadow-2xl ${callType === 'video' ? 'block' : 'hidden'}`}
-              />
+          {/* Quick message icon on the right side */}
+          <div className="absolute right-6 top-24 z-10 flex flex-col space-y-4">
+            <button 
+              onClick={() => {
+                setMobileView('chat');
+                endCall(false); // Go back to chat
+              }}
+              className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition shadow"
+              title="Pesan Singkat"
+            >
+              <MessageSquareMore size={20} />
+            </button>
+          </div>
 
-              {callType === 'voice' && (
-                /* Voice Call Banner */
-                <div className="flex flex-col items-center justify-center space-y-3 z-10">
-                  <div className="w-20 h-20 rounded-full bg-chat-accent/10 border border-chat-accent/30 flex items-center justify-center text-chat-accent animate-ping">
-                    <Phone size={36} />
-                  </div>
-                  <span className="text-xs text-gray-500">Audio Only Mode</span>
+          {/* 2. Center Content Area (Avatar / Video Streams) */}
+          <div className="w-full flex-1 flex items-center justify-center my-6 z-10">
+            {callType === 'video' && callState === 'connected' ? (
+              <div className="relative w-full h-full max-h-[70vh] aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl border border-gray-800">
+                {/* Remote Video Stream */}
+                <video 
+                  ref={remoteVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  className="w-full h-full object-cover"
+                />
+                {/* Local PIP Video */}
+                <video 
+                  ref={localVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="absolute bottom-4 right-4 w-28 md:w-36 aspect-video rounded-xl border-2 border-emerald-500 object-cover shadow-2xl"
+                />
+              </div>
+            ) : (
+              /* Big circular profile image exactly like screenshot */
+              <div className="relative flex items-center justify-center">
+                <div className="w-48 h-48 md:w-56 md:h-56 rounded-full overflow-hidden border-4 border-gray-800/40 shadow-2xl bg-chat-header/30">
+                  <img 
+                    src={partnerAvatar || AVATARS[0]} 
+                    alt={partnerUsername} 
+                    className="w-full h-full object-cover grayscale brightness-90" 
+                  />
                 </div>
-              )}
-            </div>
+                {/* Hidden elements to keep WebRTC working */}
+                <video ref={remoteVideoRef} autoPlay playsInline className="hidden" />
+                <video ref={localVideoRef} autoPlay playsInline muted className="hidden" />
+              </div>
+            )}
+          </div>
 
-            {/* Calling Control Buttons */}
-            <div className="flex items-center space-x-6 z-10">
-              {callState === 'ringing' ? (
-                /* Callee Options: Accept or Decline */
-                <>
-                  <button 
-                    onClick={() => endCall(true)} 
-                    className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform"
-                    title="Tolak Panggilan"
-                  >
-                    <PhoneOff size={24} />
-                  </button>
-                  <button 
-                    onClick={acceptCall} 
-                    className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform animate-bounce"
-                    title="Terima Panggilan"
-                  >
-                    <Phone size={24} className="rotate-12" />
-                  </button>
-                </>
-              ) : (
-                /* Caller or Active Call Options: Mute, Toggle Camera, End Call */
-                <>
-                  {callState === 'connected' && (
-                    <div className="flex items-center space-x-3">
-                      {/* Mode Hening (Mute Mic) */}
-                      <button 
-                        onClick={toggleAudioMute} 
-                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
-                          isAudioMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                        }`}
-                        title={isAudioMuted ? "Aktifkan Suara Anda" : "Mode Hening (Mute)"}
-                      >
-                        {isAudioMuted ? <MicOff size={20} /> : <Mic size={20} />}
-                      </button>
+          {/* 3. Bottom controls capsule bar exactly like screenshot */}
+          <div className="w-full max-w-sm bg-[#1e272d]/95 backdrop-blur-md rounded-full px-6 py-4 flex items-center justify-between shadow-2xl border border-white/5 z-10 mb-4">
+            {/* More Options */}
+            <button 
+              onClick={() => alert('Opsi Panggilan Tambahan')}
+              className="text-gray-400 hover:text-white p-2 transition active:scale-95"
+              title="Opsi Lainnya"
+            >
+              <MoreHorizontal size={22} />
+            </button>
 
-                      {/* Loudspeaker */}
-                      <button 
-                        onClick={toggleLoudspeaker} 
-                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
-                          isLoudspeakerOn ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                        }`}
-                        title={isLoudspeakerOn ? "Matikan Loudspeaker" : "Aktifkan Loudspeaker"}
-                      >
-                        {isLoudspeakerOn ? <Volume2 size={20} /> : <Volume1 size={20} />}
-                      </button>
-                    </div>
-                  )}
+            {/* Video Camera Toggle */}
+            <button 
+              onClick={toggleVideoMute}
+              className={`p-2.5 rounded-full transition active:scale-95 ${
+                isVideoMuted ? 'text-rose-500 hover:bg-rose-500/10' : 'text-gray-300 hover:bg-white/10'
+              }`}
+              title={isVideoMuted ? "Aktifkan Kamera" : "Matikan Kamera"}
+            >
+              {isVideoMuted ? <VideoOff size={22} /> : <Video size={22} />}
+            </button>
 
-                  <button 
-                    onClick={() => endCall(true)} 
-                    className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform"
-                    title="Akhiri Panggilan"
-                  >
-                    <PhoneOff size={24} />
-                  </button>
+            {/* Loudspeaker Volume Toggle */}
+            <button 
+              onClick={toggleLoudspeaker}
+              className={`p-2.5 rounded-full transition active:scale-95 ${
+                isLoudspeakerOn ? 'text-[#25d366] hover:bg-emerald-500/10' : 'text-gray-300 hover:bg-white/10'
+              }`}
+              title={isLoudspeakerOn ? "Matikan Loudspeaker" : "Aktifkan Loudspeaker"}
+            >
+              {isLoudspeakerOn ? <Volume2 size={22} /> : <Volume1 size={22} />}
+            </button>
 
-                  {callState === 'connected' && callType === 'video' && (
-                    <button 
-                      onClick={toggleVideoMute} 
-                      className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
-                        isVideoMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                      }`}
-                      title={isVideoMuted ? "Aktifkan Kamera" : "Matikan Kamera"}
-                    >
-                      {isVideoMuted ? <VideoOff size={20} /> : <Video size={20} />}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
+            {/* Mode Hening (Mute Mic) */}
+            <button 
+              onClick={toggleAudioMute}
+              className={`p-2.5 rounded-full transition active:scale-95 ${
+                isAudioMuted ? 'text-rose-500 hover:bg-rose-500/10' : 'text-gray-300 hover:bg-white/10'
+              }`}
+              title={isAudioMuted ? "Aktifkan Suara" : "Mode Hening"}
+            >
+              {isAudioMuted ? <MicOff size={22} /> : <Mic size={22} />}
+            </button>
 
+            {/* Red Hangup Call button */}
+            <button 
+              onClick={() => endCall(true)}
+              className="w-12 h-12 rounded-full bg-[#ea0038] hover:bg-[#d00030] text-white flex items-center justify-center shadow-lg transition transform active:scale-90 hover:scale-105"
+              title="Akhiri Panggilan"
+            >
+              <PhoneOff size={20} />
+            </button>
           </div>
         </div>
       )}

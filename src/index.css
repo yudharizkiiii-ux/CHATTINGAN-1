@@ -6,25 +6,6 @@
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
-  }
-}
-
-/* Glassmorphism custom classes */
-.glass-panel {
-  background: rgba(17, 27, 33, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.glass-card {
-  background: rgba(32, 44, 51, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 /* Custom Scrollbars */
@@ -38,12 +19,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Subtle Pulsing Animation for Typing Indicator */
@@ -74,11 +55,23 @@
 .chat-wallpaper {
   position: absolute;
   inset: 0;
-  opacity: 0.06;
+  opacity: 0.08;
   pointer-events: none;
   background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
   background-repeat: repeat;
-  background-size: 350px;
+  background-size: 380px;
+}
+
+/* Dark mode wallpaper specifically for call screen */
+.call-wallpaper {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  pointer-events: none;
+  background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+  background-repeat: repeat;
+  background-size: 340px;
+  filter: invert(1);
 }
 
 /* Slide in from bottom animation */
@@ -96,3 +89,4 @@
 .animate-slideup {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
