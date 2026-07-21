@@ -39,7 +39,9 @@ import {
   UserPlus,
   MessageSquareMore,
   MoreHorizontal,
-  ChevronDown
+  ChevronDown,
+  MapPin,
+  Map
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -58,6 +60,349 @@ const DEFAULT_BROKERS = [
   { name: 'HiveMQ Public Broker', url: 'wss://broker.hivemq.com:8884/mqtt' },
   { name: 'EMQX Public Broker', url: 'wss://broker.emqx.io:8083/mqtt' },
   { name: 'Mosquitto Public Broker', url: 'wss://test.mosquitto.org:8081/mqtt' }
+];
+
+const EMOJI_CATEGORIES = [
+  {
+    id: 'smileys',
+    name: 'Smileys & People',
+    icon: '😀',
+    emojis: [
+      { char: '😀', tags: 'smile senyum ketawa gembira happy' },
+      { char: '😃', tags: 'smile senyum ketawa gembira happy' },
+      { char: '😄', tags: 'smile senyum ketawa gembira happy' },
+      { char: '😁', tags: 'smile senyum ketawa gembira happy gigi' },
+      { char: '😆', tags: 'smile senyum ketawa gembira happy lol' },
+      { char: '😅', tags: 'smile senyum ketawa gembira happy keringat' },
+      { char: '😂', tags: 'smile senyum ketawa gembira happy lol wkwk nangis' },
+      { char: '🤣', tags: 'smile senyum ketawa gembira happy lol wkwk guling' },
+      { char: '😊', tags: 'smile senyum ketawa gembira happy blush' },
+      { char: '😇', tags: 'smile senyum ketawa gembira happy malaikat angel' },
+      { char: '🙂', tags: 'smile senyum ketawa gembira happy' },
+      { char: '🙃', tags: 'smile senyum ketawa gembira happy kebalik' },
+      { char: '😉', tags: 'smile senyum ketawa gembira happy kedip wink' },
+      { char: '😌', tags: 'smile senyum gembira happy lega' },
+      { char: '😍', tags: 'smile senyum gembira happy love cinta takjub suka' },
+      { char: '🥰', tags: 'smile senyum gembira happy love cinta takjub suka blush' },
+      { char: '😘', tags: 'smile senyum gembira happy love cinta cium kiss' },
+      { char: '😗', tags: 'smile senyum gembira happy cium kiss' },
+      { char: '😙', tags: 'smile senyum gembira happy cium kiss' },
+      { char: '😚', tags: 'smile senyum gembira happy cium kiss' },
+      { char: '😋', tags: 'smile senyum gembira happy lezat makan lidah' },
+      { char: '😛', tags: 'smile senyum gembira happy lidah' },
+      { char: '😝', tags: 'smile senyum gembira happy lidah melet' },
+      { char: '😜', tags: 'smile senyum gembira happy lidah melet kedip' },
+      { char: '🤪', tags: 'smile senyum gembira happy lidah melet gila mad' },
+      { char: '🤨', tags: 'smile senyum heran bingung alismata' },
+      { char: '🧐', tags: 'smile senyum heran bingung kaca pembesar kacamata' },
+      { char: '🤓', tags: 'smile senyum pintar kacamata nerd' },
+      { char: '😎', tags: 'smile senyum kacamata hitam cool gaul kacamata' },
+      { char: '🥸', tags: 'smile senyum kacamata topeng samaran' },
+      { char: '🤩', tags: 'smile senyum gembira happy takjub mata bintang' },
+      { char: '🥳', tags: 'smile senyum gembira happy pesta party' },
+      { char: '😏', tags: 'smile senyum licik smirk' },
+      { char: '😒', tags: 'smile sedih kesal unamused' },
+      { char: '😞', tags: 'sad sedih kecewa' },
+      { char: '😔', tags: 'sad sedih pensive kecewa' },
+      { char: '😟', tags: 'sad sedih khawatir' },
+      { char: '😕', tags: 'sad sedih bingung' },
+      { char: '🙁', tags: 'sad sedih cemberut' },
+      { char: '☹️', tags: 'sad sedih cemberut parah' },
+      { char: '😣', tags: 'sad sedih kesal lelah' },
+      { char: '😖', tags: 'sad sedih kesal lelah' },
+      { char: '😫', tags: 'sad sedih kesal lelah capek' },
+      { char: '😩', tags: 'sad sedih kesal lelah capek' },
+      { char: '🥺', tags: 'sad sedih mohon memelas imut' },
+      { char: '😢', tags: 'sad sedih nangis cry air mata' },
+      { char: '😭', tags: 'sad sedih nangis cry air mata deras' },
+      { char: '😤', tags: 'sad sedih kesal marah' },
+      { char: '😠', tags: 'sad sedih kesal marah angry' },
+      { char: '😡', tags: 'sad sedih kesal marah angry merah red' },
+      { char: '🤬', tags: 'sad sedih kesal marah angry sumpah serapah' },
+      { char: '🤯', tags: 'sad sedih takjub kepala meledak mindblown' },
+      { char: '😳', tags: 'blush malu kaget terkejut flushed' },
+      { char: '🥵', tags: 'panas hot gerah merah' },
+      { char: '🥶', tags: 'dingin cold beku biru' },
+      { char: '😱', tags: 'kaget terkejut takut scream' },
+      { char: '😨', tags: 'kaget terkejut takut' },
+      { char: '😰', tags: 'kaget terkejut takut cemas keringat' },
+      { char: '😥', tags: 'kaget terkejut cemas keringat lega' },
+      { char: '😓', tags: 'sedih kesal lelah keringat capek' },
+      { char: '🤗', tags: 'smile senyum gembira happy peluk hug' },
+      { char: '🤔', tags: 'heran bingung mikir think' },
+      { char: '🫣', tags: 'mengintip takut malu peek' },
+      { char: '🤭', tags: 'senyum ketawa malu tutup mulut' },
+      { char: '🫢', tags: 'kaget terkejut tutup mulut terperangah' },
+      { char: '🫡', tags: 'hormat hormat salute' },
+      { char: '🤫', tags: 'diam shh quiet' },
+      { char: '🫠', tags: 'meleleh lemas melt' },
+      { char: '🤥', tags: 'bohong lie pinokio' },
+      { char: '😶', tags: 'diam no mouth kosong' },
+      { char: '🫥', tags: 'diam kosong ilang' },
+      { char: '😐', tags: 'datar netral biasa' },
+      { char: '😑', tags: 'datar netral biasa males' },
+      { char: '😬', tags: 'meringis tegang grimace' },
+      { char: '🙄', tags: 'malas rolling eyes' },
+      { char: '😯', tags: 'kaget terkejut terperangah' },
+      { char: '😦', tags: 'kaget terkejut' },
+      { char: '😧', tags: 'kaget terkejut cemas' },
+      { char: '😮', tags: 'kaget terkejut terperangah' },
+      { char: '😲', tags: 'kaget terkejut terperangah luar biasa' },
+      { char: '🥱', tags: 'ngantuk nguap yawn' },
+      { char: '😴', tags: 'tidur ngantuk sleep' },
+      { char: '🤤', tags: 'ngiler' },
+      { char: '😪', tags: 'tidur ngantuk lelah' },
+      { char: '😵', tags: 'pusing mabuk pingsan dizzy' },
+      { char: '😵‍💫', tags: 'pusing mabuk pingsan dizzy muter' },
+      { char: '🫨', tags: 'gemetar shake kaget' },
+      { char: '🤐', tags: 'diam tutup mulut kunci sleting zipper' },
+      { char: '🥴', tags: 'pusing mabuk woozy' },
+      { char: '🤢', tags: 'mual muntah sick' },
+      { char: '🤮', tags: 'muntah sick' },
+      { char: '🤧', tags: 'bersin flu sakit sick' },
+      { char: '😷', tags: 'masker sakit sick' },
+      { char: '🤒', tags: 'sakit demam termometer sick' },
+      { char: '🤕', tags: 'sakit luka perban sick' },
+      { char: '🤑', tags: 'uang kaya money rich' },
+      { char: '🤠', tags: 'koboi cowboy' },
+      { char: '😈', tags: 'iblis setan devil ungu' },
+      { char: '👿', tags: 'iblis setan devil marah ungu' },
+      { char: '👹', tags: 'ogre monster jepang' },
+      { char: '👺', tags: 'goblin monster jepang merah' },
+      { char: '🤡', tags: 'badut clown lucu' },
+      { char: '💩', tags: 'poop pup kotoran lucu' },
+      { char: '👻', tags: 'hantu setan ghost serem' },
+      { char: '💀', tags: 'tengkorak skull mati death' },
+      { char: '☠️', tags: 'tengkorak racun danger bahaya' },
+      { char: '👽', tags: 'alien luar angkasa' },
+      { char: '👾', tags: 'monster game space invader' },
+      { char: '🤖', tags: 'robot mesin tech' },
+      { char: '👋', tags: 'tangan dada halo dadah bye wave' },
+      { char: '👍', tags: 'setuju oke mantap sip bagus yes like jempol' },
+      { char: '👎', tags: 'tolak buruk jelek dislike jempol' },
+      { char: '✊', tags: 'kepal tinju semangat' },
+      { char: '👊', tags: 'kepal tinju punch tos' },
+      { char: '🤛', tags: 'tinju kiri' },
+      { char: '🤜', tags: 'tinju kanan' },
+      { char: '👏', tags: 'tepuk tangan applause' },
+      { char: '🙌', tags: 'hore hore gembira angkat tangan' },
+      { char: '👐', tags: 'tangan terbuka' },
+      { char: '🤲', tags: 'doa meminta' },
+      { char: '🤝', tags: 'jabat tangan setuju deal' },
+      { char: '🙏', tags: 'tolong maaf terima kasih doa sujud plise please' },
+      { char: '💪', tags: 'semangat kuat otot muscle' }
+    ]
+  },
+  {
+    id: 'animals',
+    name: 'Animals & Nature',
+    icon: '🐶',
+    emojis: [
+      { char: '🐶', tags: 'anjing dog guk' },
+      { char: '🐱', tags: 'kucing cat meong' },
+      { char: '🐭', tags: 'tikus mouse' },
+      { char: '🐹', tags: 'hamster' },
+      { char: '🐰', tags: 'kelinci rabbit' },
+      { char: '🦊', tags: 'rubah fox' },
+      { char: '🐻', tags: 'beruang bear' },
+      { char: '🐼', tags: 'panda' },
+      { char: '🐨', tags: 'koala' },
+      { char: '🐯', tags: 'harimau tiger' },
+      { char: '🦁', tags: 'singa lion' },
+      { char: '🐮', tags: 'sapi cow' },
+      { char: '🐷', tags: 'babi pig' },
+      { char: '🐸', tags: 'katak kodok frog' },
+      { char: '🐵', tags: 'monyet monkey' },
+      { char: '🐔', tags: 'ayam chicken' },
+      { char: '🐧', tags: 'pinguin penguin' },
+      { char: '🐦', tags: 'burung bird' },
+      { char: '🦆', tags: 'bebek duck' },
+      { char: '🦅', tags: 'elang eagle' },
+      { char: '🦉', tags: 'burung hantu owl' },
+      { char: '🐝', tags: 'lebah bee madu' },
+      { char: '🦋', tags: 'kupu kupu butterfly' },
+      { char: '🐢', tags: 'kura kura turtle' },
+      { char: '🐍', tags: 'ular snake' },
+      { char: '🐙', tags: 'gurita octopus' },
+      { char: '🦑', tags: 'cumi squid' },
+      { char: '🦀', tags: 'kepiting crab' },
+      { char: '🐠', tags: 'ikan fish' },
+      { char: '🐬', tags: 'lumba dolphin' },
+      { char: '🐳', tags: 'paus whale' },
+      { char: '🦈', tags: 'hiu shark' },
+      { char: '🐊', tags: 'buaya crocodile' },
+      { char: '🌴', tags: 'pohon palem kelapa tree' },
+      { char: '🌲', tags: 'pohon cemara pinus tree' },
+      { char: '🌳', tags: 'pohon rindang tree' },
+      { char: '🍀', tags: 'daun semanggi clover keberuntungan' },
+      { char: '🍁', tags: 'daun maple gugur' },
+      { char: '🌸', tags: 'bunga sakura flower' },
+      { char: '🌹', tags: 'bunga mawar rose merah flower' },
+      { char: '🌻', tags: 'bunga matahari sunflower kuning' }
+    ]
+  },
+  {
+    id: 'food',
+    name: 'Food & Drink',
+    icon: '🍏',
+    emojis: [
+      { char: '🍏', tags: 'apel apple hijau buah fruit' },
+      { char: '🍎', tags: 'apel apple merah buah fruit' },
+      { char: '🍌', tags: 'pisang banana kuning buah fruit' },
+      { char: '🍉', tags: 'semangka watermelon buah fruit' },
+      { char: '🍇', tags: 'anggur grape buah fruit' },
+      { char: '🍓', tags: 'stroberi strawberry buah fruit' },
+      { char: '🍒', tags: 'ceri cherry buah fruit' },
+      { char: '🥭', tags: 'mangga mango buah fruit' },
+      { char: '🍍', tags: 'nanas pineapple buah fruit' },
+      { char: '🥥', tags: 'kelapa coconut buah fruit' },
+      { char: '🥑', tags: 'alpukat avocado buah fruit' },
+      { char: '🍆', tags: 'terong eggplant' },
+      { char: '🌽', tags: 'jagung corn' },
+      { char: '🌶️', tags: 'cabai chili pedas hot' },
+      { char: '🍞', tags: 'roti bread' },
+      { char: '🥩', tags: 'daging steak meat' },
+      { char: '🍔', tags: 'burger hamburger' },
+      { char: '🍟', tags: 'kentang goreng french fries' },
+      { char: '🍕', tags: 'pizza' },
+      { char: '🍜', tags: 'mie bakso ramen noodle' },
+      { char: '🍣', tags: 'sushi' },
+      { char: '🍩', tags: 'donat donut' },
+      { char: '🍪', tags: 'kue kering cookie biskuit' },
+      { char: '🎂', tags: 'kue ulang tahun cake birthday' },
+      { char: '🍫', tags: 'cokelat chocolate' },
+      { char: '🍬', tags: 'permen candy' },
+      { char: '☕', tags: 'kopi teh cup coffee tea' },
+      { char: '🍺', tags: 'bir beer alkohol' },
+      { char: '🍻', tags: 'bir beer tos cheers' },
+      { char: '🥂', tags: 'sampanye toast cheers' },
+      { char: '🥃', tags: 'wiski glass whiskey' },
+      { char: '🥤', tags: 'minuman soda cup drink' },
+      { char: '🧃', tags: 'jus kotak juice' },
+      { char: '🧊', tags: 'es batu ice' }
+    ]
+  },
+  {
+    id: 'activities',
+    name: 'Activities & Sports',
+    icon: '⚽',
+    emojis: [
+      { char: '⚽', tags: 'bola sepak bola soccer football' },
+      { char: '🏀', tags: 'basket basketball' },
+      { char: '🏈', tags: 'rugby football' },
+      { char: '⚾', tags: 'bisbol baseball' },
+      { char: '🎾', tags: 'tenis tennis' },
+      { char: '🏐', tags: 'voli volleyball' },
+      { char: '🎱', tags: 'biliar billiard 8ball' },
+      { char: '🏓', tags: 'pingpong table tennis' },
+      { char: '🏸', tags: 'bulutangkis badminton' },
+      { char: '⛳', tags: 'golf' },
+      { char: '🏆', tags: 'piala trofi trophy juara winner' },
+      { char: '🥇', tags: 'medali emas gold medal' },
+      { char: '🎖️', tags: 'medali militer medal' },
+      { char: '🎨', tags: 'melukis lukisan art paint' },
+      { char: '🎬', tags: 'film bioskop movie clapperboard' },
+      { char: '🎤', tags: 'mikrofon mic nyanyi sing' },
+      { char: '🎧', tags: 'headphone musik music' },
+      { char: '🎸', tags: 'gitar guitar musik music' },
+      { char: '🎹', tags: 'piano keyboard musik music' },
+      { char: '🎮', tags: 'game konsol stik controller play' },
+      { char: '🎯', tags: 'target panah dart bullseye' },
+      { char: '🎲', tags: 'dadu dice game' }
+    ]
+  },
+  {
+    id: 'travel',
+    name: 'Travel & Places',
+    icon: '🚗',
+    emojis: [
+      { char: '🚗', tags: 'mobil car merah' },
+      { char: '🚕', tags: 'taksi taxi kuning' },
+      { char: '🏎️', tags: 'mobil balap race car' },
+      { char: '🚓', tags: 'mobil polisi police car' },
+      { char: '🚌', tags: 'bus bis' },
+      { char: '🏍️', tags: 'motor motorcycle' },
+      { char: '🚲', tags: 'sepeda bicycle' },
+      { char: '🚨', tags: 'sirine polisi darurat emergency' },
+      { char: '⛵', tags: 'perahu kapal boat sail' },
+      { char: '🚢', tags: 'kapal pesiar ship cruise' },
+      { char: '✈️', tags: 'pesawat terbang plane flight' },
+      { char: '🚀', tags: 'roket rocket luar angkasa space' },
+      { char: '🛸', tags: 'ufo piring terbang alien' },
+      { char: '⏰', tags: 'jam weker alarm clock time' },
+      { char: '⏱️', tags: 'stopwatch waktu' },
+      { char: '🗺️', tags: 'peta map' },
+      { char: '☀️', tags: 'matahari panas cerah sun day' },
+      { char: '⭐', tags: 'bintang star' },
+      { char: '🌟', tags: 'bintang bersinar star' },
+      { char: '☁️', tags: 'awan mendung cloud' },
+      { char: '⛈️', tags: 'hujan petir storm rain' },
+      { char: '🌈', tags: 'pelangi rainbow' },
+      { char: '⚡', tags: 'petir kilat listrik thunder' },
+      { char: '❄️', tags: 'salju dingin snow winter' },
+      { char: '🔥', tags: 'api panas bakar fire burn' },
+      { char: '🌊', tags: 'ombak laut air water wave' }
+    ]
+  },
+  {
+    id: 'objects',
+    name: 'Objects',
+    icon: '📱',
+    emojis: [
+      { char: '📱', tags: 'hp handphone smartphone telepon' },
+      { char: '💻', tags: 'laptop komputer computer' },
+      { char: '🖥️', tags: 'komputer monitor screen pc' },
+      { char: '📷', tags: 'kamera foto camera photo' },
+      { char: '🎥', tags: 'kamera video movie cam' },
+      { char: '📞', tags: 'telepon lama phone call' },
+      { char: '📺', tags: 'tv televisi television' },
+      { char: '🎙️', tags: 'mic studio microphone broadcast' },
+      { char: '💡', tags: 'lampu ide lightbulb idea' },
+      { char: '🔦', tags: 'senter flashlight' },
+      { char: '✉️', tags: 'surat amplop email mail letter' },
+      { char: '📦', tags: 'paket kardus box package' },
+      { char: '🔑', tags: 'kunci key' },
+      { char: '🔒', tags: 'gembok kunci lock' },
+      { char: '🔓', tags: 'gembok buka unlock' },
+      { char: '📝', tags: 'catatan kertas memo note pen' },
+      { char: '📅', tags: 'kalender tanggal calendar date' },
+      { char: '🗑️', tags: 'tempat sampah trash bin' },
+      { char: '📌', tags: 'pin paku payung' },
+      { char: '📍', tags: 'pin peta lokasi location' },
+      { char: '💵', tags: 'uang kertas dollar money cash' },
+      { char: '💳', tags: 'kartu kredit credit card bank' },
+      { char: '🛍️', tags: 'belanja tas shopping bag' }
+    ]
+  },
+  {
+    id: 'symbols',
+    name: 'Symbols',
+    icon: '❤️',
+    emojis: [
+      { char: '❤️', tags: 'hati merah love cinta heart' },
+      { char: '🧡', tags: 'hati oranye love cinta heart orange' },
+      { char: '💛', tags: 'hati kuning love cinta heart yellow' },
+      { char: '💚', tags: 'hati hijau love cinta heart green' },
+      { char: '💙', tags: 'hati biru love cinta heart blue' },
+      { char: '💜', tags: 'hati ungu love cinta heart purple' },
+      { char: '🖤', tags: 'hati hitam love cinta heart black' },
+      { char: '🤍', tags: 'hati putih love cinta heart white' },
+      { char: '🤎', tags: 'hati cokelat love cinta heart brown' },
+      { char: '💔', tags: 'patah hati broken heart sedih' },
+      { char: '❣️', tags: 'tanda seru hati exclamation heart' },
+      { char: '💕', tags: 'dua hati love cinta heart' },
+      { char: '💞', tags: 'hati berputar love cinta heart' },
+      { char: '✨', tags: 'kilau bintang sparkle' },
+      { char: '💥', tags: 'ledakan boom spark' },
+      { char: '💦', tags: 'keringat cipratan air sweat water' },
+      { char: '💨', tags: 'angin lari cepat dash' },
+      { char: '💯', tags: 'seratus sempurna 100' },
+      { char: '⚠️', tags: 'peringatan bahaya warning danger' },
+      { char: '✅', tags: 'centang hijau check yes' },
+      { char: '❌', tags: 'silang merah cross no' },
+      { char: '💤', tags: 'tidur dengkur sleep' }
+    ]
+  }
 ];
 
 export default function App() {
@@ -113,9 +458,20 @@ export default function App() {
   const [typingUsers, setTypingUsers] = useState({}); // { [roomId]: { [username]: timestamp } }
   const [onlineUsers, setOnlineUsers] = useState({}); // { [roomId]: [ {username, avatar, lastSeen} ] }
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiSearchQuery, setEmojiSearchQuery] = useState('');
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState('smileys');
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDesc, setNewRoomDesc] = useState('');
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
+
+  // --- Location & Map Sharing States & Refs ---
+  const [showLocationMenu, setShowLocationMenu] = useState(false);
+  const [isSharingLive, setIsSharingLive] = useState(false);
+  const [liveLocations, setLiveLocations] = useState({}); // { [roomId]: { [username]: { latitude, longitude, avatar, lastUpdated, liveId } } }
+  const [mapModal, setMapModal] = useState({ isOpen: false, type: 'static', lat: -6.2000, lng: 106.8166, label: '', roomId: '' });
+  const liveWatchRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const mapMarkersRef = useRef({});
 
   // --- Audio States & Refs ---
   const [playingAudioId, setPlayingAudioId] = useState(null);
@@ -144,10 +500,32 @@ export default function App() {
   const pendingCandidates = useRef([]);
   const ringtoneRef = useRef(null);
 
-  // --- Refs ---
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const messageInputRef = useRef(null);
+  const selectionStartRef = useRef(0);
   const typingTimeoutRef = useRef({});
+
+  const handleEmojiClick = (emoji) => {
+    const input = messageInputRef.current;
+    const start = selectionStartRef.current;
+    const text = messageText;
+    const before = text.substring(0, start);
+    const after = text.substring(start, text.length);
+    const newText = before + emoji + after;
+    setMessageText(newText);
+    
+    // Update the selection reference
+    selectionStartRef.current = start + emoji.length;
+    
+    if (input) {
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + emoji.length, start + emoji.length);
+      }, 10);
+    }
+    handleTypingIndicator(true);
+  };
 
   // Sync to LocalStorage
   useEffect(() => {
@@ -174,6 +552,105 @@ export default function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeRoom, typingUsers]);
+
+  // Initialize and Update Leaflet Map in Modal
+  useEffect(() => {
+    if (!mapModal.isOpen) return;
+
+    const timer = setTimeout(() => {
+      const container = document.getElementById('leaflet-map-container');
+      if (!container) return;
+
+      if (window.L) {
+        const L = window.L;
+        
+        const defaultIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="background-color: #00a884; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7]
+        });
+
+        if (!mapInstanceRef.current) {
+          const map = L.map('leaflet-map-container').setView([mapModal.lat, mapModal.lng], 15);
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+          }).addTo(map);
+
+          mapInstanceRef.current = map;
+        }
+
+        const map = mapInstanceRef.current;
+
+        if (mapModal.type === 'static') {
+          Object.values(mapMarkersRef.current).forEach(m => m.remove());
+          mapMarkersRef.current = {};
+
+          const marker = L.marker([mapModal.lat, mapModal.lng], { icon: defaultIcon }).addTo(map);
+          if (mapModal.label) {
+            marker.bindPopup(`<b style="color:#000;">${mapModal.label}</b>`).openPopup();
+          }
+          mapMarkersRef.current['static'] = marker;
+          map.setView([mapModal.lat, mapModal.lng], 15);
+        } else if (mapModal.type === 'live') {
+          const activeRoomId = mapModal.roomId || activeRoom;
+          const sharers = liveLocations[activeRoomId] || {};
+          const activeUsers = Object.keys(sharers);
+          
+          Object.keys(mapMarkersRef.current).forEach(userKey => {
+            if (!activeUsers.includes(userKey) && userKey !== 'static') {
+              mapMarkersRef.current[userKey].remove();
+              delete mapMarkersRef.current[userKey];
+            }
+          });
+
+          const latLngList = [];
+          Object.entries(sharers).forEach(([userKey, data]) => {
+            const isMe = userKey === username;
+            const labelText = isMe ? 'Anda (Live)' : `${userKey} (Live)`;
+            const avatarUrl = data.avatar || AVATARS[0];
+            
+            const avatarIcon = L.divIcon({
+              className: 'custom-avatar-icon',
+              html: `
+                <div style="position: relative; width: 40px; height: 40px;">
+                  <img src="${avatarUrl}" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid ${isMe ? '#00a884' : '#0ea5e9'}; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.4);" />
+                  <div style="position: absolute; bottom: 0; left: 14px; width: 12px; height: 12px; border-radius: 50%; background-color: #10b981; border: 2px solid white; box-shadow: 0 0 2px rgba(0,0,0,0.5);" class="animate-pulse"></div>
+                </div>
+              `,
+              iconSize: [40, 40],
+              iconAnchor: [20, 20]
+            });
+
+            const latLng = [data.latitude, data.longitude];
+            latLngList.push(latLng);
+
+            if (mapMarkersRef.current[userKey]) {
+              mapMarkersRef.current[userKey].setLatLng(latLng);
+            } else {
+              const marker = L.marker(latLng, { icon: avatarIcon }).addTo(map);
+              marker.bindPopup(`<b style="color:#000;">${labelText}</b>`);
+              mapMarkersRef.current[userKey] = marker;
+            }
+          });
+
+          if (latLngList.length > 0) {
+            const bounds = L.latLngBounds(latLngList);
+            if (latLngList.length === 1) {
+              map.setView(latLngList[0], 15);
+            } else {
+              map.fitBounds(bounds, { padding: [50, 50] });
+            }
+          }
+        }
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [mapModal.isOpen, mapModal.lat, mapModal.lng, mapModal.type, liveLocations, activeRoom]);
 
   // Synthesize notification sound
   const playNotificationSound = () => {
@@ -571,6 +1048,10 @@ export default function App() {
       // Subscribe to DM invites
       mqttClient.subscribe(`mqtt_chat/users/${username}/dms`);
       
+      // Subscribe to Live Location sharing wildcards
+      mqttClient.subscribe('mqtt_chat/rooms/+/live_location/+');
+      mqttClient.subscribe('mqtt_chat/dms/rooms/+/live_location/+');
+      
       // Announce self
       announcePresence(mqttClient);
     });
@@ -578,6 +1059,33 @@ export default function App() {
     mqttClient.on('message', (topic, payload) => {
       try {
         const data = JSON.parse(payload.toString());
+
+        // Handle Live Location data
+        if (topic.includes('/live_location/')) {
+          const parts = topic.split('/');
+          const isDm = parts[1] === 'dms';
+          const roomId = isDm ? parts[3] : parts[2];
+          const senderUser = isDm ? parts[5] : parts[4];
+          
+          if (senderUser !== username) {
+            setLiveLocations(prev => {
+              const roomLive = { ...prev[roomId] } || {};
+              if (data.type === 'stop') {
+                delete roomLive[senderUser];
+              } else {
+                roomLive[senderUser] = {
+                  latitude: data.latitude,
+                  longitude: data.longitude,
+                  avatar: data.avatar,
+                  liveId: data.liveId,
+                  lastUpdated: Date.now()
+                };
+              }
+              return { ...prev, [roomId]: roomLive };
+            });
+          }
+          return;
+        }
         
         // Handle DM invites
         if (topic === `mqtt_chat/users/${username}/dms`) {
@@ -652,15 +1160,33 @@ export default function App() {
         }
 
         if (roomId) {
+          if (data.type === 'live-location-stopped') {
+            setMessages(prev => {
+              const roomMsgs = prev[roomId] || [];
+              const updated = roomMsgs.map(m => {
+                if (m.type === 'live-location' && m.liveId === data.liveId) {
+                  return { ...m, isLiveStopped: true };
+                }
+                return m;
+              });
+              return { ...prev, [roomId]: updated };
+            });
+            return;
+          }
+
           const isSenderSelf = data.username === username;
           const formattedMessage = {
             id: data.id || Math.random().toString(),
             sender: data.username,
             avatar: data.avatar || AVATARS[0],
             text: data.text,
-            type: data.type || 'text', // 'text', 'image', 'audio'
+            type: data.type || 'text', // 'text', 'image', 'audio', 'location', 'live-location'
             timestamp: data.timestamp || Date.now(),
-            mediaData: data.mediaData, // For base64 files
+            mediaData: data.mediaData,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            liveId: data.liveId,
+            isLiveStopped: data.isLiveStopped,
             self: isSenderSelf,
           };
 
@@ -791,7 +1317,181 @@ export default function App() {
     }
 
     setMessageText('');
+    selectionStartRef.current = 0;
     handleTypingIndicator(false);
+  };
+
+  // --- Geolocation Sharing Actions ---
+  const handleSendStaticLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolokasi tidak didukung oleh browser Anda.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        const payload = {
+          id: `msg_${Math.random().toString(36).substring(2, 15)}`,
+          username,
+          avatar,
+          text: `📍 Lokasi Dibagikan`,
+          type: 'location',
+          latitude: lat,
+          longitude: lng,
+          timestamp: Date.now()
+        };
+        
+        const isDm = activeRoom.startsWith('dm_');
+        const topic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
+        client.publish(topic, JSON.stringify(payload), { qos: 1 });
+        
+        if (isDm) {
+          const partner = getDmPartner(activeRoom);
+          if (partner) {
+            client.publish(`mqtt_chat/users/${partner.username}/dms`, JSON.stringify({
+              type: 'invite',
+              sender: username,
+              avatar: avatar
+            }), { qos: 1 });
+          }
+        }
+        setShowLocationMenu(false);
+      },
+      (error) => {
+        console.error(error);
+        alert("Gagal mendapatkan lokasi Anda. Pastikan izin lokasi diberikan.");
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const handleStartLiveLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolokasi tidak didukung oleh browser Anda.");
+      return;
+    }
+    
+    if (isSharingLive) {
+      handleStopLiveLocation();
+      return;
+    }
+    
+    const liveId = `live_${username}_${Date.now()}`;
+    setIsSharingLive(true);
+    setShowLocationMenu(false);
+    
+    const initPayload = {
+      id: `msg_${Math.random().toString(36).substring(2, 15)}`,
+      username,
+      avatar,
+      text: `📍 Berbagi Lokasi Terkini (Live)`,
+      type: 'live-location',
+      liveId,
+      isLiveStopped: false,
+      timestamp: Date.now()
+    };
+    
+    const isDm = activeRoom.startsWith('dm_');
+    const chatTopic = isDm ? `mqtt_chat/dms/rooms/${activeRoom}` : `mqtt_chat/rooms/${activeRoom}`;
+    client.publish(chatTopic, JSON.stringify(initPayload), { qos: 1 });
+    
+    if (isDm) {
+      const partner = getDmPartner(activeRoom);
+      if (partner) {
+        client.publish(`mqtt_chat/users/${partner.username}/dms`, JSON.stringify({
+          type: 'invite',
+          sender: username,
+          avatar: avatar
+        }), { qos: 1 });
+      }
+    }
+    
+    const locTopic = isDm 
+      ? `mqtt_chat/dms/rooms/${activeRoom}/live_location/${username}` 
+      : `mqtt_chat/rooms/${activeRoom}/live_location/${username}`;
+      
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        const payload = {
+          latitude: lat,
+          longitude: lng,
+          avatar,
+          liveId,
+          timestamp: Date.now()
+        };
+        client.publish(locTopic, JSON.stringify(payload), { qos: 0 });
+        
+        setLiveLocations(prev => {
+          const roomLive = prev[activeRoom] ? { ...prev[activeRoom] } : {};
+          roomLive[username] = {
+            latitude: lat,
+            longitude: lng,
+            avatar,
+            liveId,
+            lastUpdated: Date.now()
+          };
+          return { ...prev, [activeRoom]: roomLive };
+        });
+      },
+      (err) => {
+        console.error(err);
+      },
+      { enableHighAccuracy: true }
+    );
+    
+    liveWatchRef.current = { watchId, liveId, roomId: activeRoom };
+    
+    // Auto-timeout after 15 mins
+    setTimeout(() => {
+      handleStopLiveLocation();
+    }, 15 * 60 * 1000);
+  };
+
+  const handleStopLiveLocation = () => {
+    if (liveWatchRef.current) {
+      const { watchId, liveId, roomId } = liveWatchRef.current;
+      navigator.geolocation.clearWatch(watchId);
+      
+      const isDm = roomId.startsWith('dm_');
+      const locTopic = isDm 
+        ? `mqtt_chat/dms/rooms/${roomId}/live_location/${username}` 
+        : `mqtt_chat/rooms/${roomId}/live_location/${username}`;
+      client.publish(locTopic, JSON.stringify({ type: 'stop' }), { qos: 1 });
+      
+      const stopPayload = {
+        type: 'live-location-stopped',
+        liveId,
+        username,
+        timestamp: Date.now()
+      };
+      const chatTopic = isDm ? `mqtt_chat/dms/rooms/${roomId}` : `mqtt_chat/rooms/${roomId}`;
+      client.publish(chatTopic, JSON.stringify(stopPayload), { qos: 1 });
+      
+      setLiveLocations(prev => {
+        const roomLive = prev[roomId] ? { ...prev[roomId] } : {};
+        delete roomLive[username];
+        return { ...prev, [roomId]: roomLive };
+      });
+      
+      setMessages(prev => {
+        const roomMsgs = prev[roomId] || [];
+        const updated = roomMsgs.map(m => {
+          if (m.type === 'live-location' && m.liveId === liveId) {
+            return { ...m, isLiveStopped: true };
+          }
+          return m;
+        });
+        return { ...prev, [roomId]: updated };
+      });
+      
+      setIsSharingLive(false);
+      liveWatchRef.current = null;
+    }
   };
 
   // --- Send Base64 Media Action with Auto-Compression ---
@@ -1567,6 +2267,37 @@ export default function App() {
           </div>
         </div>
 
+        {/* Live Location Alert Bar */}
+        {Object.keys(liveLocations[activeRoom] || {}).length > 0 && (
+          <div className="bg-[#005c4b]/20 border-b border-[#00a884]/20 py-2 px-4 flex items-center justify-between z-10 animate-slideup text-xs md:text-sm shrink-0">
+            <div className="flex items-center space-x-2 text-emerald-400 font-medium truncate pr-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping shrink-0"></span>
+              <MapPin size={16} className="shrink-0" />
+              <span className="truncate">
+                {Object.keys(liveLocations[activeRoom]).map(u => u === username ? 'Anda' : u).join(', ')} sedang berbagi lokasi terkini
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                const sharers = liveLocations[activeRoom];
+                const firstUser = Object.keys(sharers)[0];
+                const data = sharers[firstUser];
+                setMapModal({
+                  isOpen: true,
+                  type: 'live',
+                  lat: data.latitude,
+                  lng: data.longitude,
+                  label: firstUser,
+                  roomId: activeRoom
+                });
+              }}
+              className="text-[#00a884] hover:underline font-bold text-xs shrink-0 cursor-pointer"
+            >
+              Lihat di Peta
+            </button>
+          </div>
+        )}
+
         {/* Messages Body Area */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 space-y-3 z-10 bg-transparent">
           {activeRoomMessages.length > 0 ? (
@@ -1631,7 +2362,81 @@ export default function App() {
                                 ></div>
                               ))}
                             </div>
-                            <span className="text-[10px] opacity-70 mt-1 block">{msg.text || 'Voice Note'}</span>
+                          </div>
+                        </div>
+                      ) : msg.type === 'location' ? (
+                        <div className="flex flex-col space-y-2 p-1 min-w-[200px]">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                              <MapPin size={18} />
+                            </div>
+                            <div className="truncate">
+                              <h4 className="text-xs font-bold text-emerald-400">Lokasi Dibagikan</h4>
+                              <p className="text-[10px] text-gray-400 truncate">
+                                {msg.latitude ? msg.latitude.toFixed(5) : '0'}, {msg.longitude ? msg.longitude.toFixed(5) : '0'}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setMapModal({
+                              isOpen: true,
+                              type: 'static',
+                              lat: msg.latitude,
+                              lng: msg.longitude,
+                              label: `${msg.sender} membagikan lokasi`,
+                              roomId: activeRoom
+                            })}
+                            className="w-full py-1.5 bg-chat-active hover:bg-chat-active/85 text-white rounded text-xs font-semibold transition"
+                          >
+                            Lihat Peta
+                          </button>
+                        </div>
+                      ) : msg.type === 'live-location' ? (
+                        <div className="flex flex-col space-y-2 p-1 min-w-[220px]">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                              <MapPin size={18} className={!msg.isLiveStopped ? 'animate-pulse' : ''} />
+                            </div>
+                            <div className="truncate">
+                              <h4 className="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
+                                <span>Lokasi Terkini (Live)</span>
+                                {!msg.isLiveStopped && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>}
+                              </h4>
+                              <p className="text-[10px] text-gray-400">
+                                {!msg.isLiveStopped ? 'Sedang membagikan...' : 'Berbagi lokasi berakhir'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                const sharers = liveLocations[activeRoom] || {};
+                                const userData = sharers[msg.sender];
+                                const targetLat = userData?.latitude || msg.latitude || -6.2000;
+                                const targetLng = userData?.longitude || msg.longitude || 106.8166;
+                                
+                                setMapModal({
+                                  isOpen: true,
+                                  type: 'live',
+                                  lat: targetLat,
+                                  lng: targetLng,
+                                  label: msg.sender,
+                                  roomId: activeRoom
+                                });
+                              }}
+                              className="flex-1 py-1.5 bg-chat-active hover:bg-chat-active/85 text-white rounded text-xs font-semibold transition"
+                            >
+                              {!msg.isLiveStopped ? 'Lihat Live' : 'Lihat Lokasi'}
+                            </button>
+                            
+                            {!msg.isLiveStopped && msg.self && (
+                              <button
+                                onClick={handleStopLiveLocation}
+                                className="py-1.5 px-3 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-900/30 rounded text-xs font-semibold transition shrink-0"
+                              >
+                                Hentikan
+                              </button>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -1686,21 +2491,125 @@ export default function App() {
         {/* Input Bar Area */}
         <div className="mt-auto bg-chat-header border-t border-gray-800 p-3 flex flex-col z-10">
           
-          {/* Native Emoji Helper Drawer */}
+          {/* WhatsApp Web Style Emoji Picker Drawer */}
           {showEmojiPicker && (
-            <div className="p-3 bg-chat-sidebar rounded-lg border border-gray-800 mb-3 flex flex-wrap gap-2 animate-slideup shadow-sm">
-              {['😀','😂','😍','👍','🔥','🙌','👏','🎉','❤️','🤔','💡','🚀','👀','❌','✅','💤'].map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => {
-                    setMessageText(prev => prev + emoji);
-                    setShowEmojiPicker(false);
-                  }}
-                  className="text-xl p-2 hover:bg-chat-active rounded transition transform hover:scale-110"
-                >
-                  {emoji}
-                </button>
-              ))}
+            <div className="flex flex-col bg-[#111b21] rounded-lg border border-[#222e35] mb-3 overflow-hidden animate-slideup shadow-lg h-72">
+              {/* Category tabs */}
+              <div className="flex bg-[#202c33] border-b border-[#222e35] p-1 justify-around text-lg shrink-0 select-none">
+                {EMOJI_CATEGORIES.map(category => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveEmojiCategory(category.id);
+                      setEmojiSearchQuery('');
+                    }}
+                    className={`p-1.5 rounded transition ${activeEmojiCategory === category.id && !emojiSearchQuery ? 'bg-[#2a3942] text-[#00a884]' : 'text-gray-400 hover:text-white'}`}
+                    title={category.name}
+                  >
+                    {category.icon}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Search bar */}
+              <div className="p-2 border-b border-[#222e35] shrink-0">
+                <input
+                  type="text"
+                  placeholder="Cari emoji..."
+                  value={emojiSearchQuery}
+                  onChange={(e) => setEmojiSearchQuery(e.target.value)}
+                  className="w-full bg-[#202c33] border-none outline-none text-gray-200 text-xs py-1.5 px-3 rounded-lg focus:ring-1 focus:ring-[#00a884] placeholder-gray-500"
+                />
+              </div>
+
+              {/* Emoji Grid */}
+              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                {emojiSearchQuery ? (
+                  // Search Results
+                  <div className="flex flex-col space-y-2">
+                    <h4 className="text-xs font-semibold text-gray-400 select-none px-1">
+                      Hasil Pencarian
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {EMOJI_CATEGORIES.flatMap(cat => cat.emojis)
+                        .filter(item => item.tags.toLowerCase().includes(emojiSearchQuery.toLowerCase()))
+                        .slice(0, 100)
+                        .map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleEmojiClick(item.char)}
+                            className="text-2xl p-1.5 hover:bg-[#2a3942] rounded transition transform hover:scale-110 active:scale-95 duration-100"
+                          >
+                            {item.char}
+                          </button>
+                        ))
+                      }
+                      {EMOJI_CATEGORIES.flatMap(cat => cat.emojis)
+                        .filter(item => item.tags.toLowerCase().includes(emojiSearchQuery.toLowerCase()))
+                        .length === 0 && (
+                          <p className="text-xs text-gray-500 italic p-1">Tidak ada emoji yang cocok.</p>
+                        )
+                      }
+                    </div>
+                  </div>
+                ) : (
+                  // Selected Category
+                  <div className="flex flex-col space-y-2">
+                    <h4 className="text-xs font-semibold text-gray-400 select-none px-1">
+                      {EMOJI_CATEGORIES.find(c => c.id === activeEmojiCategory)?.name}
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {EMOJI_CATEGORIES.find(c => c.id === activeEmojiCategory)?.emojis.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleEmojiClick(item.char)}
+                          className="text-2xl p-1.5 hover:bg-[#2a3942] rounded transition transform hover:scale-110 active:scale-95 duration-100"
+                        >
+                          {item.char}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Location Picker Drawer */}
+          {showLocationMenu && (
+            <div className="p-3 bg-chat-sidebar rounded-lg border border-gray-800 mb-3 flex flex-col gap-2 animate-slideup shadow-sm max-w-xs text-sm">
+              <button
+                type="button"
+                onClick={handleSendStaticLocation}
+                className="w-full flex items-center space-x-3 p-2 hover:bg-chat-active rounded-lg text-left transition text-white"
+              >
+                <div className="w-8 h-8 bg-emerald-500/10 rounded-full flex items-center justify-center shrink-0">
+                  <MapPin size={18} className="text-chat-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-xs">Kirim Lokasi Saat Ini</div>
+                  <div className="text-[10px] text-gray-400">Bagikan koordinat GPS instan Anda</div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleStartLiveLocation}
+                className="w-full flex items-center space-x-3 p-2 hover:bg-chat-active rounded-lg text-left transition text-white"
+              >
+                <div className="w-8 h-8 bg-emerald-500/10 rounded-full flex items-center justify-center shrink-0">
+                  <MapPin size={18} className={`text-chat-accent ${isSharingLive ? 'animate-pulse' : ''}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-xs">{isSharingLive ? 'Hentikan Berbagi Lokasi' : 'Bagikan Lokasi Terkini (Live)'}</div>
+                  <div className="text-[10px] text-gray-400">
+                    {isSharingLive ? 'Sedang aktif berbagi...' : 'Pelacakan real-time di peta'}
+                  </div>
+                </div>
+              </button>
             </div>
           )}
 
@@ -1708,7 +2617,10 @@ export default function App() {
             <div className="flex items-center space-x-1.5 text-gray-400">
               <button 
                 type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                onClick={() => {
+                  setShowEmojiPicker(!showEmojiPicker);
+                  setShowLocationMenu(false);
+                }}
                 className={`p-2 hover:bg-chat-active rounded-full transition ${showEmojiPicker ? 'text-chat-accent' : 'hover:text-white'}`}
                 title="Tambahkan Emoji"
               >
@@ -1717,7 +2629,11 @@ export default function App() {
 
               <button 
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  fileInputRef.current?.click();
+                  setShowLocationMenu(false);
+                  setShowEmojiPicker(false);
+                }}
                 className="p-2 hover:bg-chat-active rounded-full transition hover:text-white"
                 title="Kirim Foto (Max 10MB)"
               >
@@ -1733,11 +2649,31 @@ export default function App() {
 
               <button 
                 type="button"
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={() => {
+                  if (isRecording) {
+                    stopRecording();
+                  } else {
+                    startRecording();
+                  }
+                  setShowLocationMenu(false);
+                  setShowEmojiPicker(false);
+                }}
                 className={`p-2 hover:bg-chat-active rounded-full transition ${isRecording ? 'text-red-500 animate-pulse' : 'hover:text-white'}`}
                 title={isRecording ? "Kirim Rekaman" : "Mulai Rekam Suara"}
               >
                 <Mic size={22} />
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  setShowLocationMenu(!showLocationMenu);
+                  setShowEmojiPicker(false);
+                }}
+                className={`p-2 hover:bg-chat-active rounded-full transition ${showLocationMenu ? 'text-chat-accent' : 'hover:text-white'}`}
+                title="Bagikan Lokasi"
+              >
+                <MapPin size={22} />
               </button>
             </div>
 
@@ -1757,12 +2693,22 @@ export default function App() {
               </div>
             ) : (
               <input 
+                ref={messageInputRef}
                 type="text" 
                 placeholder={connectionStatus === 'connected' ? "Ketik pesan..." : "Sedang menghubungkan ke Broker..."}
                 className="flex-1 bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent transition placeholder-gray-500"
                 value={messageText}
                 onChange={onInputChange}
                 disabled={connectionStatus !== 'connected'}
+                onSelect={(e) => {
+                  selectionStartRef.current = e.target.selectionStart;
+                }}
+                onClick={(e) => {
+                  selectionStartRef.current = e.target.selectionStart;
+                }}
+                onKeyUp={(e) => {
+                  selectionStartRef.current = e.target.selectionStart;
+                }}
               />
             )}
 
@@ -2264,7 +3210,51 @@ export default function App() {
         </div>
       )}
 
+      {/* 6. LEAFLET MAP MODAL */}
+      {mapModal.isOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4">
+          <div className="w-full max-w-4xl h-[85vh] bg-chat-sidebar rounded-xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col animate-slideup">
+            <div className="px-4 md:px-6 py-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white shrink-0">
+              <span className="font-semibold text-sm md:text-base flex items-center">
+                <Map className="mr-2 text-chat-accent" size={18} /> 
+                {mapModal.type === 'live' ? 'Pelacakan Lokasi Terkini (Live Location)' : 'Peta Lokasi'}
+              </span>
+              <button 
+                onClick={() => {
+                  setMapModal(prev => ({ ...prev, isOpen: false }));
+                  if (mapInstanceRef.current) {
+                    mapInstanceRef.current.remove();
+                    mapInstanceRef.current = null;
+                  }
+                  mapMarkersRef.current = {};
+                }}
+                className="p-1.5 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
+            <div id="leaflet-map-container" className="flex-1 bg-[#0b141a] relative" style={{ minHeight: '300px' }}></div>
+
+            <div className="px-4 md:px-6 py-3 bg-chat-header border-t border-gray-800 flex flex-col md:flex-row md:justify-between md:items-center gap-2 text-xs text-gray-400 shrink-0">
+              <span className="truncate">{mapModal.type === 'live' ? 'Peta melacak lokasi bergerak secara real-time.' : `Koordinat: ${mapModal.lat.toFixed(6)}, ${mapModal.lng.toFixed(6)}`}</span>
+              <button
+                onClick={() => {
+                  setMapModal(prev => ({ ...prev, isOpen: false }));
+                  if (mapInstanceRef.current) {
+                    mapInstanceRef.current.remove();
+                    mapInstanceRef.current = null;
+                  }
+                  mapMarkersRef.current = {};
+                }}
+                className="bg-chat-accent text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:scale-105 active:scale-95 transition self-end md:self-auto"
+              >
+                Tutup Peta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

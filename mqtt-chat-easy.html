@@ -39,6 +39,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Leaflet JS & CSS for Location Sharing -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <style>
     body {
@@ -98,66 +101,84 @@
   <div class="flex h-screen w-screen overflow-hidden bg-chat-bg">
     
     <!-- SIDEBAR -->
-    <div class="w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-800 bg-chat-sidebar shrink-0 z-10">
+    <div id="sidebar-panel" class="w-full md:w-[380px] xl:w-[420px] h-full flex flex-col border-r border-gray-800 bg-chat-sidebar shrink-0 z-10">
+      
       <!-- Profile Header -->
-      <div class="h-16 px-4 flex items-center justify-between bg-chat-header border-b border-gray-800">
-        <div class="flex items-center space-x-3">
-          <button onclick="toggleSettingsModal(true)" class="relative group transition hover:scale-105">
-            <img id="my-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full object-cover border-2 border-chat-accent/40">
-            <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-chat-sidebar"></span>
+      <div class="h-16 px-4 flex items-center justify-between bg-chat-header border-b border-gray-800 shrink-0">
+        <!-- Left: Options menu button -->
+        <button onclick="switchTab('you')" class="w-10 h-10 rounded-full bg-chat-active hover:bg-chat-active/80 flex items-center justify-center text-gray-300 transition" title="Pengaturan">
+          <span class="font-bold text-lg text-white">...</span>
+        </button>
+
+        <!-- Right: Actions -->
+        <div class="flex items-center space-x-3 text-gray-400">
+          <button onclick="alert('Fitur Kamera Jaringan Lokal')" class="p-2 hover:bg-chat-active rounded-full hover:text-white transition" title="Kamera">
+            <i data-lucide="camera" class="w-5 h-5"></i>
           </button>
-          <div class="flex flex-col">
-            <span id="my-username" class="font-semibold text-sm leading-tight text-white hover:text-chat-accent cursor-pointer transition" onclick="toggleSettingsModal(true)">Username</span>
-            <span class="text-[11px] text-gray-400">Online via MQTT</span>
-          </div>
-        </div>
-        <div class="flex items-center space-x-2 text-gray-400">
-          <button onclick="toggleSound()" id="sound-btn" class="p-2 hover:bg-chat-active rounded-full hover:text-white transition" title="Matikan Suara">
-            <i data-lucide="volume-2"></i>
-          </button>
-          <button onclick="toggleCreateRoomModal(true)" class="p-2 hover:bg-chat-active rounded-full hover:text-white transition" title="Buat Room Baru">
-            <i data-lucide="plus"></i>
-          </button>
-          <button onclick="toggleSettingsModal(true)" class="p-2 hover:bg-chat-active rounded-full hover:text-white transition" title="Pengaturan Broker">
-            <i data-lucide="settings"></i>
+          <button onclick="toggleStartDmModal(true)" class="w-9 h-9 bg-chat-accent hover:bg-chat-accent/90 text-white rounded-full flex items-center justify-center shadow transition transform active:scale-95" title="Mulai Chat Baru">
+            <i data-lucide="plus" class="w-5 h-5"></i>
           </button>
         </div>
       </div>
 
       <!-- Connection Status Banner -->
-      <div id="conn-banner" class="px-4 py-2 text-xs flex items-center justify-between border-b bg-amber-950/40 border-amber-900/40 text-amber-400 transition-all duration-300">
+      <div id="conn-banner" class="px-4 py-2 text-xs flex items-center justify-between border-b bg-amber-950/40 border-amber-900/40 text-amber-400 transition-all duration-300 shrink-0">
         <div class="flex items-center space-x-2">
           <span id="conn-indicator" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
           <span id="conn-text" class="font-medium">Menghubungkan ke Broker...</span>
         </div>
-        <button onclick="toggleSettingsModal(true)" class="underline hover:text-white font-semibold transition">Ubah</button>
+        <button onclick="switchTab('you')" class="underline hover:text-white font-semibold transition">Ubah</button>
       </div>
 
-      <!-- Search bar -->
-      <div class="p-3 bg-chat-sidebar">
-        <div class="relative flex items-center bg-chat-active rounded-lg px-3 py-2 text-gray-400">
-          <i data-lucide="search" class="mr-3 w-4 h-4"></i>
-          <input oninput="filterRooms(this.value)" type="text" placeholder="Cari obrolan..." class="bg-transparent border-none outline-none w-full text-sm text-gray-200 placeholder-gray-400">
-        </div>
+      <!-- Dynamic Sidebar Tab Content Area -->
+      <div id="sidebar-content-area" class="flex-1 overflow-y-auto bg-chat-sidebar flex flex-col">
+        <!-- populated by JavaScript dynamically based on activeTab -->
       </div>
 
-      <!-- Rooms list -->
-      <div id="rooms-list-container" class="flex-1 overflow-y-auto divide-y divide-gray-800/40">
-        <!-- Dyn contents -->
+      <!-- BOTTOM NAVIGATION BAR -->
+      <div class="h-16 border-t border-gray-800 bg-chat-header flex items-center justify-around shrink-0 text-gray-400 select-none z-10">
+        <button onclick="switchTab('updates')" id="tab-btn-updates" class="flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition hover:text-white">
+          <i data-lucide="circle-dot"></i>
+          <span class="mt-1">Pembaruan</span>
+        </button>
+        <button onclick="switchTab('calls')" id="tab-btn-calls" class="flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition hover:text-white relative">
+          <i data-lucide="phone"></i>
+          <span class="mt-1">Panggilan</span>
+        </button>
+        <button onclick="switchTab('communities')" id="tab-btn-communities" class="flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition hover:text-white">
+          <i data-lucide="users"></i>
+          <span class="mt-1">Komunitas</span>
+        </button>
+        <button onclick="switchTab('chat')" id="tab-btn-chat" class="flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition hover:text-white relative text-white">
+          <i data-lucide="message-square-more" class="text-chat-accent"></i>
+          <span class="mt-1">Chat</span>
+        </button>
+        <button onclick="switchTab('you')" id="tab-btn-you" class="flex flex-col items-center justify-center flex-1 h-full py-1 text-[11px] font-medium transition hover:text-white">
+          <div class="relative w-6 h-6 rounded-full border border-gray-800 overflow-hidden">
+            <img id="nav-my-avatar" src="" class="w-full h-full object-cover">
+          </div>
+          <span class="mt-1">Anda</span>
+        </button>
       </div>
+
     </div>
 
     <!-- MAIN CHAT PANEL -->
-    <div class="flex-1 h-full flex flex-col relative bg-[#0b141a]">
+    <div id="chat-panel" class="flex-1 h-full flex flex-col relative bg-[#0b141a] hidden md:flex">
       <div class="chat-wallpaper"></div>
       
       <!-- Chat Header -->
-      <div class="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between z-10">
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="toggleDetailsPanel()">
+      <div class="h-16 px-4 bg-chat-header border-b border-gray-800 flex items-center justify-between z-10 text-white">
+        <div class="flex items-center space-x-3 cursor-pointer overflow-hidden" onclick="toggleDetailsPanel()">
+          <!-- Back button on mobile -->
+          <button onclick="goBackToChatList(event)" class="md:hidden p-1.5 hover:bg-chat-active rounded-full text-gray-400 hover:text-white transition shrink-0">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          </button>
+          
           <div id="chat-header-avatar" class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold shrink-0">G</div>
-          <div>
-            <h3 id="chat-header-name" class="font-semibold text-white text-sm md:text-base leading-tight">General Lounge</h3>
-            <p id="chat-header-status" class="text-xs text-gray-400">Loading members...</p>
+          <div class="truncate">
+            <h3 id="chat-header-name" class="font-semibold text-white text-sm md:text-base leading-tight truncate">General Lounge</h3>
+            <p id="chat-header-status" class="text-xs text-gray-400 truncate">Loading members...</p>
           </div>
         </div>
         <div class="flex items-center space-x-3 text-gray-300">
@@ -166,6 +187,16 @@
           <div class="w-px h-6 bg-gray-800"></div>
           <button onclick="toggleDetailsPanel()" class="p-2 hover:bg-chat-active rounded-full transition hover:text-white"><i data-lucide="info"></i></button>
         </div>
+      </div>
+
+      <!-- Live Location Notification Bar -->
+      <div id="live-location-banner" class="hidden bg-[#005c4b]/20 border-b border-[#00a884]/20 py-2 px-4 flex items-center justify-between z-10 animate-slideup text-xs md:text-sm">
+        <div class="flex items-center space-x-2 text-emerald-400 font-medium truncate pr-2">
+          <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping shrink-0"></span>
+          <i data-lucide="map-pin" class="shrink-0 w-4 h-4"></i>
+          <span id="live-location-banner-text" class="truncate">Seseorang sedang berbagi lokasi terkini</span>
+        </div>
+        <button onclick="viewGroupLiveLocation()" class="text-[#00a884] hover:underline font-bold text-xs shrink-0 cursor-pointer">Lihat di Peta</button>
       </div>
 
       <!-- Chat Messages Body -->
@@ -178,6 +209,28 @@
         <!-- emojis populated by JS -->
       </div>
 
+      <!-- Location Bar Drawer Helper -->
+      <div id="location-drawer" class="hidden px-4 py-3 bg-chat-sidebar border-t border-gray-800 flex flex-col gap-2.5 z-10 animate-slideup max-w-xs rounded-t-lg">
+        <button type="button" onclick="handleSendStaticLocation()" class="w-full flex items-center space-x-3 p-2 hover:bg-chat-active rounded-lg text-left transition text-white">
+          <div class="w-8 h-8 bg-emerald-500/10 rounded-full flex items-center justify-center shrink-0">
+            <i data-lucide="map-pin" class="text-chat-accent w-5 h-5"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-xs">Kirim Lokasi Saat Ini</div>
+            <div class="text-[10px] text-gray-400">Bagikan koordinat GPS instan Anda</div>
+          </div>
+        </button>
+        <button type="button" onclick="handleStartLiveLocation()" class="w-full flex items-center space-x-3 p-2 hover:bg-chat-active rounded-lg text-left transition text-white">
+          <div class="w-8 h-8 bg-emerald-500/10 rounded-full flex items-center justify-center shrink-0">
+            <i id="live-loc-icon" data-lucide="map-pin" class="text-chat-accent w-5 h-5"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div id="live-loc-title" class="font-bold text-xs">Bagikan Lokasi Terkini (Live)</div>
+            <div id="live-loc-desc" class="text-[10px] text-gray-400">Pelacakan real-time di peta</div>
+          </div>
+        </button>
+      </div>
+
       <!-- Input Form -->
       <div class="mt-auto bg-chat-header border-t border-gray-800 p-3 z-10">
         <form id="chat-form" onsubmit="sendMessage(event)" class="flex items-center space-x-3">
@@ -186,6 +239,7 @@
             <button type="button" onclick="triggerFileInput()" class="p-2 hover:bg-chat-active rounded-full" title="Kirim Foto (Max 10MB)"><i data-lucide="image"></i></button>
             <input type="file" id="image-file-input" onchange="sendImageFile(event)" accept="image/*" class="hidden">
             <button type="button" id="mic-btn" onclick="handleMicClick()" class="p-2 hover:bg-chat-active rounded-full transition" title="Mulai Rekam Suara"><i data-lucide="mic"></i></button>
+            <button type="button" onclick="toggleLocationDrawer()" class="p-2 hover:bg-chat-active rounded-full transition" title="Bagikan Lokasi"><i data-lucide="map-pin"></i></button>
           </div>
           <div id="input-container" class="flex-1 flex items-center">
             <input id="chat-input" type="text" placeholder="Ketik pesan..." class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent placeholder-gray-500">
@@ -277,6 +331,26 @@
     </form>
   </div>
 
+  <!-- START DM MODAL -->
+  <div id="start-dm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <form onsubmit="startPrivateChat(event)" class="w-full max-w-md bg-chat-sidebar rounded-xl border border-gray-800 shadow-2xl overflow-hidden animate-slideup">
+      <div class="px-6 py-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white">
+        <span class="font-semibold text-base flex items-center"><i data-lucide="message-square" class="mr-2 text-chat-accent"></i> Mulai Chat Pribadi</span>
+        <button type="button" onclick="toggleStartDmModal(false)" class="p-1 hover:bg-chat-active rounded-full text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Username Teman</label>
+          <input id="new-dm-username" type="text" required placeholder="Ketik username teman Anda..." class="w-full bg-chat-active border-none outline-none text-gray-200 text-sm py-2.5 px-4 rounded-lg focus:ring-1 focus:ring-chat-accent">
+        </div>
+      </div>
+      <div class="px-6 py-3 bg-chat-header border-t border-gray-800 flex justify-end space-x-3">
+        <button type="button" onclick="toggleStartDmModal(false)" class="text-gray-400 hover:text-white px-4 py-1.5 rounded-lg text-sm">Batal</button>
+        <button type="submit" class="bg-chat-accent text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:scale-105 transition">Mulai Chat</button>
+      </div>
+    </form>
+  </div>
+
   <!-- WebRTC Call Overlay -->
   <div id="call-overlay" class="hidden fixed inset-0 bg-gray-950/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
     <div class="w-full max-w-4xl flex flex-col h-full items-center justify-between py-8">
@@ -298,6 +372,27 @@
         <!-- Dyn controls -->
       </div>
 
+    </div>
+  </div>
+
+  <!-- LEAFLET MAP MODAL -->
+  <div id="map-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4 animate-slideup">
+    <div class="w-full max-w-4xl h-[85vh] bg-chat-sidebar rounded-xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="px-4 md:px-6 py-4 bg-chat-header border-b border-gray-800 flex items-center justify-between text-white shrink-0">
+        <span id="map-modal-title" class="font-semibold text-sm md:text-base flex items-center">
+          <i data-lucide="map" class="mr-2 text-chat-accent w-5 h-5"></i> 
+          Peta Lokasi
+        </span>
+        <button onclick="closeMapModal()" class="p-1.5 hover:bg-chat-active rounded-full text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <!-- Map container -->
+      <div id="leaflet-map-container" class="flex-1 bg-[#0b141a] relative" style="min-height:300px;"></div>
+      <!-- Footer -->
+      <div class="px-4 md:px-6 py-3 bg-chat-header border-t border-gray-800 flex flex-col md:flex-row md:justify-between md:items-center gap-2 text-xs text-gray-400 shrink-0">
+        <span id="map-modal-coordinates" class="truncate">Koordinat</span>
+        <button onclick="closeMapModal()" class="bg-chat-accent text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:scale-105 transition self-end md:self-auto">Tutup Peta</button>
+      </div>
     </div>
   </div>
 
@@ -329,10 +424,24 @@
     let activeRoom = rooms[0].id;
     let messages = JSON.parse(localStorage.getItem('mqtt_chat_messages')) || {};
     
+    let activeTab = 'chat'; // 'updates' | 'calls' | 'communities' | 'chat' | 'you'
+    let mobileView = 'list'; // 'list' | 'chat'
+    let dms = JSON.parse(localStorage.getItem('mqtt_chat_dms')) || [];
+    
     let client = null;
     let onlineUsers = {}; // { [roomId]: [ {username, avatar, lastSeen} ] }
     let typingUsers = {}; // { [roomId]: { [username]: timestamp } }
     let searchFilter = '';
+
+    // --- Location Sharing States ---
+    let showLocationDrawer = false;
+    let isSharingLive = false;
+    let liveWatchId = null;
+    let liveId = null;
+    let liveLocations = {}; // { [roomId]: { [username]: { latitude, longitude, avatar, lastUpdated, liveId } } }
+    let mapInstance = null;
+    let mapMarkers = {};
+    let currentMapModalData = null; // { type, lat, lng, label, roomId }
     
     // --- Real Voice Note States ---
     let isRecording = false;
@@ -650,6 +759,316 @@
       lucide.createIcons();
     }
 
+    // --- Geolocation & Map Actions ---
+    function toggleLocationDrawer() {
+      showLocationDrawer = !showLocationDrawer;
+      const drawer = document.getElementById('location-drawer');
+      const emojiDrawer = document.getElementById('emoji-drawer');
+      
+      if (showLocationDrawer) {
+        drawer.classList.remove('hidden');
+        emojiDrawer.classList.add('hidden');
+      } else {
+        drawer.classList.add('hidden');
+      }
+    }
+
+    function handleSendStaticLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolokasi tidak didukung oleh browser Anda.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          const payload = {
+            id: `msg_${Math.random().toString(36).substring(2, 15)}`,
+            username,
+            avatar,
+            text: `📍 Lokasi Dibagikan`,
+            type: 'location',
+            latitude: lat,
+            longitude: lng,
+            timestamp: Date.now()
+          };
+          
+          client.publish(getPublishTopic(activeRoom), JSON.stringify(payload), { qos: 1 });
+          toggleLocationDrawer();
+        },
+        (error) => {
+          console.error(error);
+          alert("Gagal mendapatkan lokasi Anda. Pastikan izin lokasi diberikan.");
+        },
+        { enableHighAccuracy: true }
+      );
+    }
+
+    function handleStartLiveLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolokasi tidak didukung oleh browser Anda.");
+        return;
+      }
+
+      if (isSharingLive) {
+        handleStopLiveLocation();
+        return;
+      }
+
+      liveId = `live_${username}_${Date.now()}`;
+      isSharingLive = true;
+      toggleLocationDrawer();
+
+      // Send initial message
+      const initPayload = {
+        id: `msg_${Math.random().toString(36).substring(2, 15)}`,
+        username,
+        avatar,
+        text: `📍 Berbagi Lokasi Terkini (Live)`,
+        type: 'live-location',
+        liveId,
+        isLiveStopped: false,
+        timestamp: Date.now()
+      };
+      client.publish(getPublishTopic(activeRoom), JSON.stringify(initPayload), { qos: 1 });
+
+      // Update UI button state
+      document.getElementById('live-loc-title').innerText = 'Hentikan Berbagi Lokasi';
+      document.getElementById('live-loc-desc').innerText = 'Sedang aktif berbagi...';
+      document.getElementById('live-loc-icon').classList.add('animate-pulse');
+
+      // Watch position
+      const locTopic = activeRoom.startsWith('dm_')
+        ? `mqtt_chat/dms/rooms/${activeRoom}/live_location/${username}`
+        : `mqtt_chat/rooms/${activeRoom}/live_location/${username}`;
+      liveWatchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          const payload = {
+            latitude: lat,
+            longitude: lng,
+            avatar,
+            liveId,
+            timestamp: Date.now()
+          };
+          client.publish(locTopic, JSON.stringify(payload), { qos: 0 });
+
+          // Update local liveLocations
+          if (!liveLocations[activeRoom]) liveLocations[activeRoom] = {};
+          liveLocations[activeRoom][username] = {
+            latitude: lat,
+            longitude: lng,
+            avatar,
+            liveId,
+            lastUpdated: Date.now()
+          };
+          
+          updateLiveLocationBanner();
+          updateLiveLocationMapMarkers();
+        },
+        (err) => { console.error(err); },
+        { enableHighAccuracy: true }
+      );
+
+      // Auto-timeout after 15 mins
+      setTimeout(() => {
+        handleStopLiveLocation();
+      }, 15 * 60 * 1000);
+    }
+
+    function handleStopLiveLocation() {
+      if (liveWatchId !== null) {
+        navigator.geolocation.clearWatch(liveWatchId);
+        liveWatchId = null;
+
+        // Send stop signal
+        const locTopic = activeRoom.startsWith('dm_')
+          ? `mqtt_chat/dms/rooms/${activeRoom}/live_location/${username}`
+          : `mqtt_chat/rooms/${activeRoom}/live_location/${username}`;
+        client.publish(locTopic, JSON.stringify({ type: 'stop' }), { qos: 1 });
+
+        // Send stopped chat message
+        const stopPayload = {
+          type: 'live-location-stopped',
+          liveId,
+          username,
+          timestamp: Date.now()
+        };
+        client.publish(getPublishTopic(activeRoom), JSON.stringify(stopPayload), { qos: 1 });
+
+        // Cleanup local states
+        if (liveLocations[activeRoom]) {
+          delete liveLocations[activeRoom][username];
+        }
+        
+        // Update local messages list directly
+        if (messages[activeRoom]) {
+          messages[activeRoom] = messages[activeRoom].map(m => {
+            if (m.type === 'live-location' && m.liveId === liveId) {
+              return { ...m, isLiveStopped: true };
+            }
+            return m;
+          });
+          localStorage.setItem('mqtt_chat_messages', JSON.stringify(messages));
+          renderMessages();
+        }
+
+        // Reset UI button state
+        document.getElementById('live-loc-title').innerText = 'Bagikan Lokasi Terkini (Live)';
+        document.getElementById('live-loc-desc').innerText = 'Pelacakan real-time di peta';
+        document.getElementById('live-loc-icon').classList.remove('animate-pulse');
+
+        isSharingLive = false;
+        liveId = null;
+        
+        updateLiveLocationBanner();
+        updateLiveLocationMapMarkers();
+      }
+    }
+
+    function updateLiveLocationBanner() {
+      const banner = document.getElementById('live-location-banner');
+      const text = document.getElementById('live-location-banner-text');
+      
+      const sharers = liveLocations[activeRoom] || {};
+      const activeUsers = Object.keys(sharers);
+      
+      if (activeUsers.length > 0) {
+        banner.classList.remove('hidden');
+        const listText = activeUsers.map(u => u === username ? 'Anda' : u).join(', ');
+        text.innerText = `${listText} sedang berbagi lokasi terkini`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function openMapModal(type, lat, lng, label, roomId = activeRoom) {
+      currentMapModalData = { type, lat, lng, label, roomId };
+      document.getElementById('map-modal').classList.remove('hidden');
+      document.getElementById('map-modal-title').innerHTML = `
+        <i data-lucide="map" class="mr-2 text-chat-accent w-5 h-5 inline"></i>
+        \${type === 'live' ? 'Pelacakan Lokasi Terkini (Live Location)' : 'Peta Lokasi'}
+      `;
+      document.getElementById('map-modal-coordinates').innerText = `Koordinat: \${lat.toFixed(6)}, \${lng.toFixed(6)}`;
+      lucide.createIcons();
+
+      setTimeout(() => {
+        if (!mapInstance) {
+          mapInstance = L.map('leaflet-map-container').setView([lat, lng], 15);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+          }).addTo(mapInstance);
+        } else {
+          mapInstance.setView([lat, lng], 15);
+        }
+
+        // Clear markers
+        Object.values(mapMarkers).forEach(m => m.remove());
+        mapMarkers = {};
+
+        if (type === 'static') {
+          const defaultIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background-color: #00a884; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+          });
+          const marker = L.marker([lat, lng], { icon: defaultIcon }).addTo(mapInstance);
+          marker.bindPopup(`<b style="color:#000;">\${label}</b>`).openPopup();
+          mapMarkers['static'] = marker;
+        } else {
+          updateLiveLocationMapMarkers();
+        }
+      }, 150);
+    }
+
+    function openLiveMapModal(sender, initialLat, initialLng) {
+      const sharers = liveLocations[activeRoom] || {};
+      const userData = sharers[sender];
+      const targetLat = userData ? userData.latitude : initialLat;
+      const targetLng = userData ? userData.longitude : initialLng;
+      openMapModal('live', targetLat, targetLng, sender);
+    }
+
+    function viewGroupLiveLocation() {
+      const sharers = liveLocations[activeRoom] || {};
+      const firstUser = Object.keys(sharers)[0];
+      if (firstUser) {
+        const data = sharers[firstUser];
+        openMapModal('live', data.latitude, data.longitude, firstUser);
+      }
+    }
+
+    function closeMapModal() {
+      document.getElementById('map-modal').classList.add('hidden');
+      if (mapInstance) {
+        mapInstance.remove();
+        mapInstance = null;
+      }
+      mapMarkers = {};
+      currentMapModalData = null;
+    }
+
+    function updateLiveLocationMapMarkers() {
+      if (!mapInstance || !currentMapModalData || currentMapModalData.type !== 'live') return;
+
+      const roomId = currentMapModalData.roomId || activeRoom;
+      const sharers = liveLocations[roomId] || {};
+      const activeUsers = Object.keys(sharers);
+
+      // Remove stopped markers
+      Object.keys(mapMarkers).forEach(userKey => {
+        if (!activeUsers.includes(userKey) && userKey !== 'static') {
+          mapMarkers[userKey].remove();
+          delete mapMarkers[userKey];
+        }
+      });
+
+      const latLngList = [];
+      Object.entries(sharers).forEach(([userKey, data]) => {
+        const isMe = userKey === username;
+        const labelText = isMe ? 'Anda (Live)' : `\${userKey} (Live)`;
+        const avatarUrl = data.avatar || AVATARS[0];
+
+        const avatarIcon = L.divIcon({
+          className: 'custom-avatar-icon',
+          html: `
+            <div style="position: relative; width: 40px; height: 40px;">
+              <img src="\${avatarUrl}" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid \${isMe ? '#00a884' : '#0ea5e9'}; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.4);" />
+              <div style="position: absolute; bottom: 0; left: 14px; width: 12px; height: 12px; border-radius: 50%; background-color: #10b981; border: 2px solid white; box-shadow: 0 0 2px rgba(0,0,0,0.5);" class="animate-pulse"></div>
+            </div>
+          `,
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
+        });
+
+        const latLng = [data.latitude, data.longitude];
+        latLngList.push(latLng);
+
+        if (mapMarkers[userKey]) {
+          mapMarkers[userKey].setLatLng(latLng);
+        } else {
+          const marker = L.marker(latLng, { icon: avatarIcon }).addTo(mapInstance);
+          marker.bindPopup(`<b style="color:#000;">\${labelText}</b>`);
+          mapMarkers[userKey] = marker;
+        }
+      });
+
+      if (latLngList.length > 0) {
+        const bounds = L.latLngBounds(latLngList);
+        if (latLngList.length === 1) {
+          mapInstance.setView(latLngList[0], 15);
+        } else {
+          mapInstance.fitBounds(bounds, { padding: [50, 50] });
+        }
+      }
+    }
+
     // --- Sound Synthesis ---
     function playSound() {
       if (!soundEnabled) return;
@@ -669,114 +1088,435 @@
       } catch (e) { console.warn(e); }
     }
 
-    // --- Init UI ---
-    function initUI() {
-      document.getElementById('my-username').innerText = username;
-      document.getElementById('my-avatar').src = avatar;
-      
-      // Update Sound Button Icon
-      const soundBtn = document.getElementById('sound-btn');
-      soundBtn.innerHTML = soundEnabled ? '<i data-lucide="volume-2"></i>' : '<i data-lucide="volume-x"></i>';
-      
-      // Setup Settings fields
-      document.getElementById('settings-username').value = username;
-      document.getElementById('settings-broker').value = brokerUrl;
-      
-      // Render Avatar List Picker
-      const avPicker = document.getElementById('avatar-picker');
-      avPicker.innerHTML = AVATARS.map(av => `
-        <button onclick="selectAvatar('${av}')" class="w-12 h-12 rounded-full overflow-hidden border-2 transition ${avatar === av ? 'border-chat-accent scale-110 shadow-lg' : 'border-transparent hover:border-gray-700'}">
-          <img src="${av}" class="w-full h-full object-cover">
-        </button>
-      `).join('');
-
-      // Render Emojis
-      const emojiDrawer = document.getElementById('emoji-drawer');
-      const emojis = ['😀','😂','😍','👍','🔥','🙌','👏','🎉','❤️','🤔','💡','🚀','👀','❌','✅','💤'];
-      emojiDrawer.innerHTML = emojis.map(em => `
-        <button type="button" onclick="insertEmoji('${em}')" class="text-xl p-2 hover:bg-chat-active rounded transition transform hover:scale-110">${em}</button>
-      `).join('');
-
-      renderRooms();
-      renderActiveRoomHeader();
-      renderMessages();
-      lucide.createIcons();
+    // --- Profile Settings Saves ---
+    function saveProfileUsername(val) {
+      const trimmed = val.trim();
+      if (trimmed && trimmed !== username) {
+        username = trimmed;
+        localStorage.setItem('mqtt_chat_username', username);
+        connectMQTT();
+        renderSidebarContent();
+      }
     }
 
-    // --- Render Rooms ---
-    function renderRooms() {
-      const container = document.getElementById('rooms-list-container');
-      const filtered = rooms.filter(r => r.name.toLowerCase().includes(searchFilter.toLowerCase()));
-      
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm">Tidak ada room ditemukan.</div>`;
+    function saveProfileBroker(val) {
+      const trimmed = val.trim();
+      if (trimmed && trimmed !== brokerUrl) {
+        brokerUrl = trimmed;
+        localStorage.setItem('mqtt_chat_broker', brokerUrl);
+        connectMQTT();
+        renderSidebarContent();
+      }
+    }
+
+    // --- Init UI ---
+    function initUI() {
+      renderSidebarContent();
+      renderActiveRoomHeader();
+      renderMessages();
+      updateResponsiveLayout();
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      renderSidebarContent();
+    }
+
+    function toggleStartDmModal(show) {
+      document.getElementById('start-dm-modal').classList.toggle('hidden', !show);
+    }
+
+    function startPrivateChat(e) {
+      if (e) e.preventDefault();
+      const targetUser = document.getElementById('new-dm-username').value.trim();
+      if (!targetUser) return;
+      if (targetUser === username) {
+        alert("Anda tidak bisa memulai chat dengan diri Anda sendiri.");
         return;
       }
 
-      container.innerHTML = filtered.map(room => {
-        const isSelected = room.id === activeRoom;
+      const existing = dms.find(d => d.username === targetUser);
+      if (!existing) {
+        dms.push({ username: targetUser, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] });
+        localStorage.setItem('mqtt_chat_dms', JSON.stringify(dms));
+      }
+
+      const dmRoomId = 'dm_' + [username, targetUser].sort().join('_');
+      
+      if (client && client.connected) {
+        client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}`);
+        client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/typing`);
+        client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/presence`);
+        client.subscribe(`mqtt_chat/calls/${dmRoomId}/${username}`);
+        
+        client.publish(`mqtt_chat/users/${targetUser}/dms`, JSON.stringify({
+          type: 'invite',
+          sender: username,
+          avatar: avatar
+        }), { qos: 1 });
+      }
+
+      toggleStartDmModal(false);
+      document.getElementById('new-dm-username').value = '';
+      selectChat(dmRoomId);
+    }
+
+    function selectChat(chatId) {
+      activeRoom = chatId;
+      document.getElementById('emoji-drawer').classList.add('hidden');
+      document.getElementById('location-drawer').classList.add('hidden');
+      showLocationDrawer = false;
+      mobileView = 'chat';
+
+      renderSidebarContent();
+      renderActiveRoomHeader();
+      renderMessages();
+      updateLiveLocationBanner();
+      updateResponsiveLayout();
+      announcePresence();
+    }
+
+    function goBackToChatList(e) {
+      if (e) e.stopPropagation();
+      mobileView = 'list';
+      updateResponsiveLayout();
+    }
+
+    function updateResponsiveLayout() {
+      const sidebar = document.getElementById('sidebar-panel');
+      const chatPanel = document.getElementById('chat-panel');
+      
+      if (mobileView === 'list') {
+        sidebar.classList.remove('hidden');
+        sidebar.classList.add('flex');
+        chatPanel.classList.remove('flex');
+        chatPanel.classList.add('hidden', 'md:flex');
+      } else {
+        sidebar.classList.remove('flex');
+        sidebar.classList.add('hidden', 'md:flex');
+        chatPanel.classList.remove('hidden');
+        chatPanel.classList.add('flex');
+      }
+    }
+
+    function renderSidebarContent() {
+      const area = document.getElementById('sidebar-content-area');
+      if (!area) return;
+
+      document.getElementById('nav-my-avatar').src = avatar;
+
+      // Reset active states for bottom nav buttons
+      ['updates', 'calls', 'communities', 'chat', 'you'].forEach(tab => {
+        const btn = document.getElementById(`tab-btn-${tab}`);
+        if (btn) {
+          if (tab === activeTab) {
+            btn.classList.add('text-white');
+            btn.classList.remove('text-gray-400');
+            const icon = btn.querySelector('i');
+            if (icon) icon.classList.add('text-chat-accent');
+          } else {
+            btn.classList.remove('text-white');
+            btn.classList.add('text-gray-400');
+            const icon = btn.querySelector('i');
+            if (icon) icon.classList.remove('text-chat-accent');
+          }
+        }
+      });
+
+      if (activeTab === 'chat') {
+        area.innerHTML = `
+          <!-- Search bar -->
+          <div class="p-3 bg-chat-sidebar shrink-0">
+            <div class="relative flex items-center bg-chat-active rounded-lg px-3 py-2 text-gray-400">
+              <i data-lucide="search" class="mr-3 w-4 h-4"></i>
+              <input oninput="filterRooms(this.value)" type="text" placeholder="Cari obrolan..." class="bg-transparent border-none outline-none w-full text-sm text-gray-200 placeholder-gray-400" value="${searchFilter}">
+            </div>
+          </div>
+
+          <!-- Diarsipkan Row -->
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-chat-active/50 cursor-pointer border-b border-gray-800/40 shrink-0">
+            <div class="flex items-center space-x-4">
+              <i data-lucide="archive" class="text-gray-400 w-5 h-5"></i>
+              <span class="text-sm font-semibold text-gray-300">Diarsipkan</span>
+            </div>
+            <span class="text-xs text-chat-accent font-bold">2</span>
+          </div>
+
+          <!-- Chat List container -->
+          <div id="chats-list-container" class="flex-1 overflow-y-auto divide-y divide-gray-800/40">
+            <!-- Populated by renderChatsList() -->
+          </div>
+        `;
+        renderChatsList();
+      } else if (activeTab === 'updates') {
+        area.innerHTML = `
+          <div class="flex-1 flex flex-col p-4 bg-chat-sidebar">
+            <h1 class="text-2xl font-bold text-white tracking-tight mb-4">Pembaruan</h1>
+            <div class="flex items-center space-x-3 mb-6 p-2">
+              <div class="relative">
+                <img src="${avatar}" class="w-14 h-14 rounded-full border-2 border-gray-800 object-cover">
+                <span class="absolute bottom-0 right-0 w-5 h-5 bg-chat-accent rounded-full border-2 border-chat-sidebar flex items-center justify-center text-white text-xs font-bold">+</span>
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-sm">Status Saya</h4>
+                <p class="text-xs text-gray-400">Ketuk untuk menambahkan status</p>
+              </div>
+            </div>
+            <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Pembaruan terkini</h5>
+            <div class="space-y-4">
+              <div class="flex items-center space-x-3 p-1">
+                <div class="w-12 h-12 rounded-full border-2 border-chat-accent p-0.5">
+                  <img src="${AVATARS[1]}" class="w-full h-full rounded-full object-cover">
+                </div>
+                <div>
+                  <h4 class="font-bold text-white text-sm">serda Desta</h4>
+                  <p class="text-xs text-gray-400">Baru saja</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (activeTab === 'calls') {
+        area.innerHTML = `
+          <div class="flex-1 flex flex-col bg-chat-sidebar p-4">
+            <h1 class="text-2xl font-bold text-white tracking-tight mb-4">Panggilan</h1>
+            <div class="flex-1 overflow-y-auto space-y-4">
+              <div class="flex items-center justify-between p-1">
+                <div class="flex items-center space-x-3">
+                  <img src="${AVATARS[2]}" class="w-12 h-12 rounded-full object-cover">
+                  <div>
+                    <h4 class="font-bold text-white text-sm">serda Desta</h4>
+                    <p class="text-xs text-red-400 flex items-center">✓ Telepon video • 09.55</p>
+                  </div>
+                </div>
+                <button onclick="startCall('video', 'serda Desta', '${AVATARS[2]}')" class="p-2 hover:bg-chat-active rounded-full text-chat-accent transition"><i data-lucide="video" class="w-5 h-5"></i></button>
+              </div>
+              <div class="flex items-center justify-between p-1">
+                <div class="flex items-center space-x-3">
+                  <img src="${AVATARS[3]}" class="w-12 h-12 rounded-full object-cover">
+                  <div>
+                    <h4 class="font-bold text-white text-sm">Pratu Dani</h4>
+                    <p class="text-xs text-chat-accent flex items-center">✓ Telepon video • 08.48</p>
+                  </div>
+                </div>
+                <button onclick="startCall('video', 'Pratu Dani', '${AVATARS[3]}')" class="p-2 hover:bg-chat-active rounded-full text-chat-accent transition"><i data-lucide="video" class="w-5 h-5"></i></button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (activeTab === 'communities') {
+        area.innerHTML = `
+          <div class="flex-1 flex flex-col p-6 items-center justify-center text-center bg-chat-sidebar">
+            <div class="w-16 h-16 bg-chat-accent/10 border border-chat-accent/25 rounded-full flex items-center justify-center text-chat-accent mb-4">
+              <i data-lucide="users" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-lg font-bold text-white mb-2">Perkenalkan Komunitas</h2>
+            <p class="text-xs text-gray-400 max-w-xs leading-relaxed">
+              Hubungkan grup-grup obrolan yang berkaitan dan kelola dalam satu tempat dengan mudah.
+            </p>
+          </div>
+        `;
+      } else if (activeTab === 'you') {
+        area.innerHTML = `
+          <div class="flex-1 flex flex-col p-4 bg-chat-sidebar overflow-y-auto space-y-6">
+            <h1 class="text-2xl font-bold text-white tracking-tight">Anda</h1>
+            
+            <div class="bg-chat-active rounded-xl p-4 shadow-sm border border-gray-800 flex items-center space-x-4">
+              <div class="relative shrink-0">
+                <img id="settings-my-avatar" src="${avatar}" class="w-16 h-16 rounded-full object-cover border border-gray-800">
+                <span class="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-chat-active"></span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <input id="settings-username-input" type="text" value="${username}" onchange="saveProfileUsername(this.value)" class="font-bold text-base text-white bg-transparent border-b border-transparent hover:border-gray-700 focus:border-chat-accent outline-none w-full truncate">
+                <p class="text-[10px] text-gray-400 mt-0.5">Ubah nama panggilan Anda</p>
+              </div>
+            </div>
+
+            <div class="bg-chat-active/50 rounded-xl p-4 shadow-sm border border-gray-800/80">
+              <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Ubah Foto Profil</h5>
+              <div class="flex gap-2 flex-wrap">
+                ${AVATARS.map(av => `
+                  <button onclick="selectAvatar('${av}')" class="w-11 h-11 rounded-full overflow-hidden border-2 transition ${avatar === av ? 'border-chat-accent scale-105 shadow-md' : 'border-transparent hover:border-gray-700'}">
+                    <img src="${av}" class="w-full h-full object-cover">
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="bg-chat-active/50 rounded-xl p-4 shadow-sm border border-gray-800/80">
+              <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Server Broker MQTT</h5>
+              <input id="settings-broker-input" type="text" value="${brokerUrl}" onchange="saveProfileBroker(this.value)" class="w-full bg-chat-sidebar border border-gray-800 outline-none text-white text-xs py-2 px-3 rounded-lg focus:ring-1 focus:ring-chat-accent font-mono">
+              <div class="flex gap-1.5 flex-wrap mt-2.5">
+                ${[
+                  { name: 'HiveMQ', url: 'wss://broker.hivemq.com:8884/mqtt' },
+                  { name: 'EMQX', url: 'wss://broker.emqx.io:8083/mqtt' },
+                  { name: 'Mosquitto', url: 'wss://test.mosquitto.org:8081/mqtt' }
+                ].map(b => `
+                  <button onclick="saveProfileBroker('${b.url}')" class="text-[9px] px-2 py-0.5 rounded transition border ${brokerUrl === b.url ? 'bg-chat-accent/20 border-chat-accent text-white' : 'bg-chat-sidebar border-gray-800 text-gray-400 hover:text-white'}">${b.name}</button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="bg-chat-active/50 rounded-xl p-4 shadow-sm border border-gray-800/80 flex items-center justify-between text-xs">
+              <span class="text-gray-300 font-semibold">Suara Notifikasi</span>
+              <button onclick="toggleSound()" class="px-3 py-1 bg-chat-active hover:bg-chat-active/85 border border-gray-800 text-white rounded font-medium transition">${soundEnabled ? 'Aktif' : 'Senyap'}</button>
+            </div>
+
+            <div class="bg-chat-active/50 rounded-xl p-4 shadow-sm border border-gray-800/80 flex items-center justify-between text-xs">
+              <span class="text-gray-300 font-semibold">Kosongkan Riwayat</span>
+              <button onclick="clearChatHistory()" class="px-3 py-1 bg-rose-950/20 hover:bg-rose-900/30 border border-rose-900/20 text-rose-400 rounded font-medium transition">Hapus</button>
+            </div>
+          </div>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    function renderChatsList() {
+      const container = document.getElementById('chats-list-container');
+      if (!container) return;
+
+      const allChats = [];
+      rooms.forEach(room => {
         const roomMsgs = messages[room.id] || [];
         const lastMsg = roomMsgs[roomMsgs.length - 1];
-        const lastMsgText = lastMsg 
-          ? `<span class="text-gray-300 font-medium">${lastMsg.sender === username ? 'Anda' : lastMsg.sender}: </span>${lastMsg.text}`
-          : (room.description || 'Belum ada pesan');
-        const lastTime = lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+        allChats.push({
+          id: room.id,
+          name: room.name,
+          description: room.description,
+          isGroup: true,
+          avatar: null,
+          lastMsg,
+          timestamp: lastMsg ? lastMsg.timestamp : 0
+        });
+      });
+
+      dms.forEach(dm => {
+        const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
+        const dmMessages = messages[dmRoomId] || [];
+        const lastMsg = dmMessages[dmMessages.length - 1];
+        allChats.push({
+          id: dmRoomId,
+          name: dm.username,
+          description: 'Chat Pribadi',
+          isGroup: false,
+          avatar: dm.avatar,
+          lastMsg,
+          timestamp: lastMsg ? lastMsg.timestamp : 0
+        });
+      });
+
+      const filtered = allChats.filter(chat => 
+        chat.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+        (chat.description && chat.description.toLowerCase().includes(searchFilter.toLowerCase()))
+      );
+
+      filtered.sort((a, b) => b.timestamp - a.timestamp);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm font-medium">Tidak ada obrolan ditemukan.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(chat => {
+        const isSelected = chat.id === activeRoom;
+        const lastMsgText = chat.lastMsg 
+          ? `<span class="text-gray-300 font-medium">${chat.lastMsg.sender === username ? 'Anda' : chat.lastMsg.sender}: </span>${chat.lastMsg.text}`
+          : (chat.description || 'Mulai obrolan...');
+        const lastTime = chat.lastMsg ? new Date(chat.lastMsg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+        const isOnline = !chat.isGroup && (onlineUsers[chat.id] || []).some(u => u.username === chat.name);
+
+        let avatarHtml = '';
+        if (chat.isGroup) {
+          avatarHtml = `
+            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-xl font-bold shrink-0">
+              ${chat.name.charAt(0)}
+            </div>
+          `;
+        } else {
+          avatarHtml = `
+            <div class="relative shrink-0">
+              <img src="${chat.avatar || AVATARS[0]}" class="w-12 h-12 rounded-full object-cover border border-gray-800">
+              ${isOnline ? '<span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-chat-sidebar"></span>' : ''}
+            </div>
+          `;
+        }
 
         return `
-          <button onclick="switchRoom('${room.id}')" class="w-full text-left p-4 flex items-center space-x-3 transition-colors ${isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'}">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 flex items-center justify-center border border-emerald-500/10 text-emerald-400 text-xl font-bold shrink-0">
-              ${room.name.charAt(0)}
-            </div>
+          <button onclick="selectChat('${chat.id}')" class="w-full text-left p-4 flex items-center space-x-3 transition-colors ${isSelected ? 'bg-chat-active' : 'hover:bg-chat-active/50'}">
+            ${avatarHtml}
             <div class="flex-1 min-w-0">
               <div class="flex justify-between items-baseline mb-1">
-                <span class="font-semibold text-white text-base truncate">${room.name}</span>
-                <span class="text-[11px] text-gray-400 shrink-0">${lastTime}</span>
+                <span class="font-bold text-white text-base truncate">${chat.name}</span>
+                <span class="text-[11px] text-gray-400 shrink-0 font-medium">${lastTime}</span>
               </div>
-              <p class="text-sm text-gray-400 truncate">${lastMsgText}</p>
+              <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-400 truncate pr-2 flex-1">${lastMsgText}</p>
+                ${!chat.lastMsg ? '<span class="w-5 h-5 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center shrink-0">8</span>' : ''}
+              </div>
             </div>
           </button>
         `;
       }).join('');
-    }
-
-    function switchRoom(roomId) {
-      activeRoom = roomId;
-      document.getElementById('emoji-drawer').classList.add('hidden');
-      renderRooms();
-      renderActiveRoomHeader();
-      renderMessages();
-      announcePresence();
+      lucide.createIcons();
     }
 
     function renderActiveRoomHeader() {
-      const room = rooms.find(r => r.id === activeRoom) || rooms[0];
-      document.getElementById('chat-header-avatar').innerText = room.name.charAt(0);
-      document.getElementById('chat-header-name').innerText = room.name;
-
-      const online = onlineUsers[activeRoom] || [];
-      const statusText = online.length > 0
-        ? `<span class="text-emerald-400 font-medium">${online.length + 1} online (${username}, ${online.map(u=>u.username).join(', ')})</span>`
-        : 'Hanya Anda di grup ini';
-      document.getElementById('chat-header-status').innerHTML = statusText;
-
-      // Update details panel info
-      document.getElementById('details-room-avatar').innerText = room.name.charAt(0);
-      document.getElementById('details-room-name').innerText = room.name;
-      document.getElementById('details-room-topic').innerText = `mqtt_chat/rooms/${room.id}`;
-      document.getElementById('details-room-desc').innerText = room.description || 'Grup chat MQTT.';
+      const isDm = activeRoom.startsWith('dm_');
       
-      const detailsList = document.getElementById('details-members-list');
-      detailsList.innerHTML = `
-        <div class="flex items-center space-x-2.5 p-1">
-          <img src="${avatar}" class="w-8 h-8 rounded-full object-cover">
-          <span class="text-sm text-white font-medium">${username} <span class="text-[10px] text-emerald-400 bg-emerald-950/40 px-1 py-0.2 rounded ml-1">Anda</span></span>
-        </div>
-        ` + online.map(m => `
-        <div class="flex items-center space-x-2.5 p-1">
-          <img src="${m.avatar}" class="w-8 h-8 rounded-full object-cover">
-          <span class="text-sm text-gray-300 font-medium">${m.username}</span>
-        </div>
-      `).join('');
+      if (isDm) {
+        const partnerName = activeRoom.replace('dm_', '').split('_').find(u => u !== username);
+        const dmContact = dms.find(d => d.username === partnerName) || { username: partnerName, avatar: AVATARS[0] };
+        
+        document.getElementById('chat-header-avatar').innerHTML = `<img src="${dmContact.avatar}" class="w-10 h-10 rounded-full object-cover border border-gray-800">`;
+        document.getElementById('chat-header-name').innerText = dmContact.username;
+        
+        const isOnline = (onlineUsers[activeRoom] || []).some(u => u.username === partnerName);
+        document.getElementById('chat-header-status').innerText = isOnline ? 'Online' : 'Offline';
+
+        // Update details panel info
+        document.getElementById('details-room-avatar').innerHTML = `<img src="${dmContact.avatar}" class="w-20 h-20 rounded-full object-cover border border-gray-850 shadow">`;
+        document.getElementById('details-room-name').innerText = dmContact.username;
+        document.getElementById('details-room-topic').innerText = `mqtt_chat/dms/rooms/${activeRoom}`;
+        document.getElementById('details-room-desc').innerText = 'Obrolan pribadi secara langsung.';
+        
+        const detailsList = document.getElementById('details-members-list');
+        detailsList.innerHTML = `
+          <div class="flex items-center space-x-2.5 p-1 bg-chat-active/30 rounded border border-gray-800/20">
+            <span class="w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-600'}"></span>
+            <span class="text-sm text-gray-300 font-medium">${isOnline ? 'Online' : 'Offline / Terputus'}</span>
+          </div>
+        `;
+      } else {
+        const room = rooms.find(r => r.id === activeRoom) || rooms[0];
+        document.getElementById('chat-header-avatar').innerHTML = room.name.charAt(0);
+        document.getElementById('chat-header-name').innerText = room.name;
+
+        const online = onlineUsers[activeRoom] || [];
+        const statusText = online.length > 0
+          ? `${online.length + 1} online (${username}, ${online.map(u=>u.username).join(', ')})`
+          : 'Hanya Anda di grup ini';
+        document.getElementById('chat-header-status').innerHTML = statusText;
+
+        // Update details panel info
+        document.getElementById('details-room-avatar').innerHTML = room.name.charAt(0);
+        document.getElementById('details-room-name').innerText = room.name;
+        document.getElementById('details-room-topic').innerText = `mqtt_chat/rooms/${room.id}`;
+        document.getElementById('details-room-desc').innerText = room.description || 'Grup chat MQTT.';
+        
+        const detailsList = document.getElementById('details-members-list');
+        detailsList.innerHTML = `
+          <div class="flex items-center space-x-2.5 p-1">
+            <img src="${avatar}" class="w-8 h-8 rounded-full object-cover">
+            <span class="text-sm text-white font-medium">${username} <span class="text-[10px] text-emerald-400 bg-emerald-950/40 px-1 py-0.2 rounded ml-1">Anda</span></span>
+          </div>
+          ` + online.map(m => `
+          <div class="flex items-center space-x-2.5 p-1">
+            <img src="${m.avatar}" class="w-8 h-8 rounded-full object-cover">
+            <span class="text-sm text-gray-300 font-medium">${m.username}</span>
+          </div>
+        `).join('');
+      }
     }
 
     // --- Render Chat Messages ---
@@ -819,6 +1559,44 @@
                   `).join('')}
                 </div>
                 <span class="text-[9px] opacity-70 block mt-1">${msg.text || 'Voice Note'}</span>
+              </div>
+            </div>
+          `;
+        } else if (msg.type === 'location') {
+          content = `
+            <div class="flex flex-col space-y-2 p-1 min-w-[200px]">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <i data-lucide="map-pin" class="w-5 h-5"></i>
+                </div>
+                <div class="truncate">
+                  <h4 class="text-xs font-bold text-emerald-400">Lokasi Dibagikan</h4>
+                  <p class="text-[10px] text-gray-400 truncate">${msg.latitude ? msg.latitude.toFixed(5) : 0}, ${msg.longitude ? msg.longitude.toFixed(5) : 0}</p>
+                </div>
+              </div>
+              <button type="button" onclick="openMapModal('static', ${msg.latitude}, ${msg.longitude}, '${msg.sender} membagikan lokasi')" class="w-full py-1.5 bg-chat-active hover:bg-chat-active/85 text-white rounded text-xs font-semibold transition">Lihat Peta</button>
+            </div>
+          `;
+        } else if (msg.type === 'live-location') {
+          const isActive = !msg.isLiveStopped;
+          content = `
+            <div class="flex flex-col space-y-2 p-1 min-w-[220px]">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <i data-lucide="map-pin" class="w-5 h-5 ${isActive ? 'animate-pulse' : ''}"></i>
+                </div>
+                <div class="truncate">
+                  <h4 class="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
+                    <span>Lokasi Terkini (Live)</span>
+                  </h4>
+                  <p class="text-[10px] text-gray-400">${isActive ? 'Sedang membagikan...' : 'Berbagi lokasi berakhir'}</p>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button type="button" onclick="openLiveMapModal('${msg.sender}', ${msg.latitude}, ${msg.longitude})" class="flex-1 py-1.5 bg-chat-active hover:bg-chat-active/85 text-white rounded text-xs font-semibold transition">${isActive ? 'Lihat Live' : 'Lihat Lokasi'}</button>
+                ${isActive && isSelf ? `
+                  <button type="button" onclick="handleStopLiveLocation()" class="py-1.5 px-3 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-900/30 rounded text-xs font-semibold transition shrink-0">Hentikan</button>
+                ` : ''}
               </div>
             </div>
           `;
@@ -889,13 +1667,28 @@
         document.getElementById('conn-indicator').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
         document.getElementById('conn-text').innerText = "Terhubung ke HiveMQ Broker";
 
-        // Subscribe
+        // Subscribe to groups
         rooms.forEach(r => {
           client.subscribe(`mqtt_chat/rooms/${r.id}`);
           client.subscribe(`mqtt_chat/rooms/${r.id}/typing`);
           client.subscribe(`mqtt_chat/rooms/${r.id}/presence`);
           client.subscribe(`mqtt_chat/calls/${r.id}/${username}`);
         });
+
+        // Subscribe to active DMs
+        dms.forEach(dm => {
+          const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
+          client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}`);
+          client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/typing`);
+          client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/presence`);
+          client.subscribe(`mqtt_chat/calls/${dmRoomId}/${username}`);
+        });
+
+        // Subscribe to DM invites
+        client.subscribe(`mqtt_chat/users/${username}/dms`);
+
+        // Subscribe to live location wildcard
+        client.subscribe('mqtt_chat/rooms/+/live_location/+');
 
         announcePresence();
       });
@@ -904,8 +1697,60 @@
         try {
           const data = JSON.parse(payload.toString());
           const parts = topic.split('/');
-          const roomId = parts[2];
+
+          // Handle DM invites
+          if (topic === `mqtt_chat/users/${username}/dms`) {
+            if (data.type === 'invite' && data.sender !== username) {
+              const existing = dms.find(d => d.username === data.sender);
+              if (!existing) {
+                dms.push({ username: data.sender, avatar: data.avatar || AVATARS[0] });
+                localStorage.setItem('mqtt_chat_dms', JSON.stringify(dms));
+                
+                const dmRoomId = 'dm_' + [username, data.sender].sort().join('_');
+                client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}`);
+                client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/typing`);
+                client.subscribe(`mqtt_chat/dms/rooms/${dmRoomId}/presence`);
+                client.subscribe(`mqtt_chat/calls/${dmRoomId}/${username}`);
+                
+                renderSidebarContent();
+                playSound();
+              }
+            }
+            return;
+          }
           
+          if (topic.includes('/live_location/')) {
+            const roomId = parts[2];
+            const senderUser = parts[4];
+            
+            if (senderUser !== username) {
+              if (!liveLocations[roomId]) liveLocations[roomId] = {};
+              if (data.type === 'stop') {
+                delete liveLocations[roomId][senderUser];
+              } else {
+                liveLocations[roomId][senderUser] = {
+                  latitude: data.latitude,
+                  longitude: data.longitude,
+                  avatar: data.avatar,
+                  liveId: data.liveId,
+                  lastUpdated: Date.now()
+                };
+              }
+              if (roomId === activeRoom) {
+                updateLiveLocationBanner();
+                updateLiveLocationMapMarkers();
+              }
+            }
+            return;
+          }
+
+          let roomId = null;
+          if (topic.startsWith('mqtt_chat/dms/rooms/')) {
+            roomId = parts[3];
+          } else if (topic.startsWith('mqtt_chat/rooms/')) {
+            roomId = parts[2];
+          }
+
           if (topic.includes('/calls/')) {
             if (data.from !== username) {
               handleCallSignal(data);
@@ -938,6 +1783,20 @@
 
           // Normal Message
           if (roomId) {
+            if (data.type === 'live-location-stopped') {
+              if (messages[roomId]) {
+                messages[roomId] = messages[roomId].map(m => {
+                  if (m.type === 'live-location' && m.liveId === data.liveId) {
+                    return { ...m, isLiveStopped: true };
+                  }
+                  return m;
+                });
+                localStorage.setItem('mqtt_chat_messages', JSON.stringify(messages));
+                if (roomId === activeRoom) renderMessages();
+              }
+              return;
+            }
+
             if (!messages[roomId]) messages[roomId] = [];
             if (messages[roomId].some(m => m.id === data.id)) return; // prevent duplicate
 
@@ -948,6 +1807,10 @@
               text: data.text,
               type: data.type || 'text',
               mediaData: data.mediaData,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              liveId: data.liveId,
+              isLiveStopped: data.isLiveStopped,
               timestamp: data.timestamp
             });
 
@@ -977,11 +1840,26 @@
       });
     }
 
+    function getPublishTopic(roomId = activeRoom) {
+      if (roomId.startsWith('dm_')) {
+        return `mqtt_chat/dms/rooms/${roomId}`;
+      }
+      return `mqtt_chat/rooms/${roomId}`;
+    }
+
     function announcePresence() {
       if (!client || !client.connected) return;
       const payload = JSON.stringify({ username, avatar, timestamp: Date.now() });
+      
+      // Groups presence
       rooms.forEach(r => {
         client.publish(`mqtt_chat/rooms/${r.id}/presence`, payload, { qos: 0 });
+      });
+
+      // DMs presence
+      dms.forEach(dm => {
+        const dmRoomId = 'dm_' + [username, dm.username].sort().join('_');
+        client.publish(`mqtt_chat/dms/rooms/${dmRoomId}/presence`, payload, { qos: 0 });
       });
     }
 
@@ -1037,7 +1915,7 @@
         timestamp: Date.now()
       };
 
-      client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+      client.publish(getPublishTopic(activeRoom), JSON.stringify(payload), { qos: 1 });
       input.value = '';
       sendTypingState(false);
     }
@@ -1096,7 +1974,7 @@
             timestamp: Date.now()
           };
 
-          client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+          client.publish(getPublishTopic(activeRoom), JSON.stringify(payload), { qos: 1 });
         };
         img.src = event.target.result;
       };
@@ -1149,7 +2027,7 @@
             };
 
             if (client && client.connected) {
-              client.publish(`mqtt_chat/rooms/${activeRoom}`, JSON.stringify(payload), { qos: 1 });
+              client.publish(getPublishTopic(activeRoom), JSON.stringify(payload), { qos: 1 });
             }
           };
           reader.readAsDataURL(audioBlob);
@@ -1274,7 +2152,11 @@
     function sendTypingState(isTyping) {
       if (!client || !client.connected || isCurrentlyTyping === isTyping) return;
       isCurrentlyTyping = isTyping;
-      client.publish(`mqtt_chat/rooms/${activeRoom}/typing`, JSON.stringify({ username, isTyping }), { qos: 0 });
+      
+      const topic = activeRoom.startsWith('dm_') 
+        ? `mqtt_chat/dms/rooms/${activeRoom}/typing`
+        : `mqtt_chat/rooms/${activeRoom}/typing`;
+      client.publish(topic, JSON.stringify({ username, isTyping }), { qos: 0 });
     }
 
     // --- Modals & Settings ---
