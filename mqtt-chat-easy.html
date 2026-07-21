@@ -743,17 +743,17 @@
         `;
       } else {
         controlsContainer.innerHTML = `
-          \${callState === 'connected' ? \`
-            <button onclick="toggleAudioMute()" class="w-12 h-12 rounded-full flex items-center justify-center shadow transition \${isAudioMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'\}">
-              <i data-lucide="\${isAudioMuted ? 'mic-off' : 'mic'\}"></i>
+          ${callState === 'connected' ? `
+            <button onclick="toggleAudioMute()" class="w-12 h-12 rounded-full flex items-center justify-center shadow transition ${isAudioMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}">
+              <i data-lucide="${isAudioMuted ? 'mic-off' : 'mic'}"></i>
             </button>
-          \` : ''}
+          ` : ''}
           <button onclick="endCall(true)" class="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg hover:scale-105 transition"><i data-lucide="phone-off"></i></button>
-          \${callState === 'connected' && callType === 'video' ? \`
-            <button onclick="toggleVideoMute()" class="w-12 h-12 rounded-full flex items-center justify-center shadow transition \${isVideoMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'\}">
-              <i data-lucide="\${isVideoMuted ? 'video-off' : 'video'\}"></i>
+          ${callState === 'connected' && callType === 'video' ? `
+            <button onclick="toggleVideoMute()" class="w-12 h-12 rounded-full flex items-center justify-center shadow transition ${isVideoMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}">
+              <i data-lucide="${isVideoMuted ? 'video-off' : 'video'}"></i>
             </button>
-          \` : ''}
+          ` : ''}
         `;
       }
       lucide.createIcons();
@@ -950,9 +950,9 @@
       document.getElementById('map-modal').classList.remove('hidden');
       document.getElementById('map-modal-title').innerHTML = `
         <i data-lucide="map" class="mr-2 text-chat-accent w-5 h-5 inline"></i>
-        \${type === 'live' ? 'Pelacakan Lokasi Terkini (Live Location)' : 'Peta Lokasi'}
+        ${type === 'live' ? 'Pelacakan Lokasi Terkini (Live Location)' : 'Peta Lokasi'}
       `;
-      document.getElementById('map-modal-coordinates').innerText = `Koordinat: \${lat.toFixed(6)}, \${lng.toFixed(6)}`;
+      document.getElementById('map-modal-coordinates').innerText = `Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       lucide.createIcons();
 
       setTimeout(() => {
@@ -1032,14 +1032,14 @@
       const latLngList = [];
       Object.entries(sharers).forEach(([userKey, data]) => {
         const isMe = userKey === username;
-        const labelText = isMe ? 'Anda (Live)' : `\${userKey} (Live)`;
+        const labelText = isMe ? 'Anda (Live)' : `${userKey} (Live)`;
         const avatarUrl = data.avatar || AVATARS[0];
 
         const avatarIcon = L.divIcon({
           className: 'custom-avatar-icon',
           html: `
             <div style="position: relative; width: 40px; height: 40px;">
-              <img src="\${avatarUrl}" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid \${isMe ? '#00a884' : '#0ea5e9'}; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.4);" />
+              <img src="${avatarUrl}" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid ${isMe ? '#00a884' : '#0ea5e9'}; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.4);" />
               <div style="position: absolute; bottom: 0; left: 14px; width: 12px; height: 12px; border-radius: 50%; background-color: #10b981; border: 2px solid white; box-shadow: 0 0 2px rgba(0,0,0,0.5);" class="animate-pulse"></div>
             </div>
           `,
@@ -1054,7 +1054,7 @@
           mapMarkers[userKey].setLatLng(latLng);
         } else {
           const marker = L.marker(latLng, { icon: avatarIcon }).addTo(mapInstance);
-          marker.bindPopup(`<b style="color:#000;">\${labelText}</b>`);
+          marker.bindPopup(`<b style="color:#000;">${labelText}</b>`);
           mapMarkers[userKey] = marker;
         }
       });
@@ -1109,8 +1109,20 @@
       }
     }
 
+    function populateEmojiDrawer() {
+      const drawer = document.getElementById('emoji-drawer');
+      if (!drawer) return;
+      const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾', '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '鼻', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋', '🩸', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'];
+      drawer.innerHTML = emojis.map(em => `
+        <button type="button" onclick="insertEmoji('${em}')" class="text-xl p-1.5 hover:bg-chat-active rounded transition shrink-0 hover:scale-115">
+          ${em}
+        </button>
+      `).join('');
+    }
+
     // --- Init UI ---
     function initUI() {
+      populateEmojiDrawer();
       renderSidebarContent();
       renderActiveRoomHeader();
       renderMessages();
@@ -1162,6 +1174,7 @@
     }
 
     function selectChat(chatId) {
+      activeTab = 'chat';
       activeRoom = chatId;
       document.getElementById('emoji-drawer').classList.add('hidden');
       document.getElementById('location-drawer').classList.add('hidden');
@@ -1212,12 +1225,12 @@
           if (tab === activeTab) {
             btn.classList.add('text-white');
             btn.classList.remove('text-gray-400');
-            const icon = btn.querySelector('i');
+            const icon = btn.querySelector('i, svg');
             if (icon) icon.classList.add('text-chat-accent');
           } else {
             btn.classList.remove('text-white');
             btn.classList.add('text-gray-400');
-            const icon = btn.querySelector('i');
+            const icon = btn.querySelector('i, svg');
             if (icon) icon.classList.remove('text-chat-accent');
           }
         }
@@ -1818,7 +1831,7 @@
             
             if (roomId === activeRoom) {
               renderMessages();
-              renderRooms();
+              renderChatsList();
             }
             if (data.username !== username) {
               playSound();
@@ -2161,7 +2174,22 @@
 
     // --- Modals & Settings ---
     function toggleSettingsModal(show) {
-      document.getElementById('settings-modal').classList.toggle('hidden', !show);
+      const modal = document.getElementById('settings-modal');
+      if (show) {
+        document.getElementById('settings-username').value = username;
+        document.getElementById('settings-broker').value = brokerUrl;
+        
+        // Render avatar picker in settings modal
+        const picker = document.getElementById('avatar-picker');
+        if (picker) {
+          picker.innerHTML = AVATARS.map(av => `
+            <button type="button" onclick="selectAvatar('${av}')" class="w-10 h-10 rounded-full overflow-hidden border-2 transition ${avatar === av ? 'border-chat-accent scale-105 shadow-md' : 'border-transparent hover:border-gray-700'}">
+              <img src="${av}" class="w-full h-full object-cover">
+            </button>
+          `).join('');
+        }
+      }
+      modal.classList.toggle('hidden', !show);
     }
     
     function selectAvatar(url) {
@@ -2200,7 +2228,7 @@
         messages = {};
         localStorage.removeItem('mqtt_chat_messages');
         renderMessages();
-        renderRooms();
+        renderChatsList();
         toggleSettingsModal(false);
       }
     }
@@ -2268,7 +2296,7 @@
 
     function filterRooms(val) {
       searchFilter = val;
-      renderRooms();
+      renderChatsList();
     }
 
     // --- On Load ---
